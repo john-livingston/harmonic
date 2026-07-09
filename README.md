@@ -4,6 +4,7 @@ A Python package for multi-harmonic Transit Timing Variation (TTV) model fitting
 
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
+[![Documentation](https://img.shields.io/badge/docs-009688.svg)](https://john-livingston.github.io/harmonic/)
 
 ## Overview
 
@@ -82,7 +83,7 @@ h.predict(['2023-09-17 16:00', '2023-09-17 21:30'])
 
 ## Worked example: Kepler-51 and a fourth planet
 
-Kepler-51 is a three-planet system (b, c, d) with strong, mutually-interacting TTVs. Fitting the Kepler-baseline transit times (through 2016) with three planets reproduces the data well:
+Kepler-51 has three transiting planets (b, c, d) with strong, mutually-interacting TTVs. Fitting the Kepler-baseline transit times (through 2016) with three planets reproduces the data well:
 
 ```bash
 harmonic -i examples/kep51.csv -c examples/kep51.ini -o kep51/
@@ -258,6 +259,15 @@ pip install -e ".[dev]"
 
 ```bash
 pytest
+```
+
+### Building the Docs
+
+Full documentation lives at [john-livingston.github.io/harmonic](https://john-livingston.github.io/harmonic/). To build it locally:
+
+```bash
+pip install -e ".[docs]"
+mkdocs serve
 ```
 
 ## Contributing

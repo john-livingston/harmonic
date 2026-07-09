@@ -29,6 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=6.0"]
+docs = ["mkdocs-material", "mkdocstrings[python]"]
 
 [project.urls]
 Repository = "https://github.com/john-livingston/harmonic"
