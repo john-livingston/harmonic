@@ -103,16 +103,21 @@ def optimize(spec, planet, epoch, tc, tc_err, planet_letters,
 
 
 def _walker_ball(res, spec, nwalkers, rng):
+    scale = spec.hi - spec.lo
     try:
         cov = np.linalg.pinv(res.jac.T @ res.jac)
         cov = (cov + cov.T) / 2  # pinv output is numerically asymmetric; MVN requires symmetric
         p0 = rng.multivariate_normal(res.x, cov, size=nwalkers, check_valid='ignore')
     except np.linalg.LinAlgError:
-        p0 = res.x + 1e-4 * (spec.hi - spec.lo) * rng.standard_normal((nwalkers, len(spec)))
-    bad = ~np.all((p0 > spec.lo) & (p0 < spec.hi), axis=1)
-    if bad.any():
-        p0[bad] = res.x + 1e-6 * (spec.hi - spec.lo) * rng.standard_normal((int(bad.sum()), len(spec)))
-    eps = 1e-10 * (spec.hi - spec.lo)
+        p0 = np.repeat(res.x[None, :], nwalkers, axis=0)
+    # Independent per-parameter jitter (0.1% of the prior width). When JtJ is
+    # rank-deficient (an unconstrained direction, common with --phase-offsets +
+    # non-transiting) pinv gives the Laplace covariance a zero-spread direction,
+    # so the walkers come out linearly dependent and emcee rejects the initial
+    # state. The jitter keeps every column independent; it is negligible for
+    # well-constrained parameters and only matters in the degenerate directions.
+    p0 = p0 + 1e-3 * scale * rng.standard_normal(p0.shape)
+    eps = 1e-10 * scale
     return np.clip(p0, spec.lo + eps, spec.hi - eps)
 
 

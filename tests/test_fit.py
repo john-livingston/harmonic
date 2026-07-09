@@ -122,3 +122,27 @@ def test_optimize_escapes_bad_phase_basin_kep51(tmp_path):
     assert np.sum(res.fun**2) / dof < 4.0
     d = h.spec.to_dict(res.x)
     assert abs(d['r_dc']) < 19.0  # not railed at R_MAX
+
+
+def test_walker_ball_independent_rank_deficient_jtj():
+    # regression: with --phase-offsets + non-transiting the kep51-ttv-new fit
+    # has a rank-deficient JtJ (an unconstrained parameter direction); pinv then
+    # gave a walker covariance with a zero-spread direction -> linearly dependent
+    # walkers -> emcee rejects the initial state ("large condition number").
+    import os
+    from emcee.ensemble import walkers_independent
+    from harmonic.harmonic import Harmonic
+    from harmonic.fit import optimize, _walker_ball
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data = os.path.join(repo, 'examples', 'kep51-ttv-new.csv')
+    if not os.path.exists(data):
+        import pytest
+        pytest.skip('kep51-ttv-new.csv not present')
+    h = Harmonic(data, os.path.join(repo, 'examples', 'kep51.ini'),
+                 outdir='/tmp/kep51n_test', non_transiting_outer=True, phase_offsets=True)
+    t = h.times
+    a = (np.array(t.planet), np.array(t.epoch), np.array(t.tc), np.array(t.tc_unc))
+    res = optimize(h.spec, *a, h.planet_letters, True, True)
+    p0 = _walker_ball(res, h.spec, 2 * len(h.spec), np.random.default_rng(42))
+    assert np.all((p0 > h.spec.lo) & (p0 < h.spec.hi))
+    assert walkers_independent(p0)  # the exact check emcee runs at init

@@ -9,3 +9,10 @@ dist/
 results/
 samples*.csv*
 harmonic_*.log
+
+# harmonic run outputs (any -o dir)
+args.txt
+fit_config.json
+data.csv
+config.ini
+*.png
