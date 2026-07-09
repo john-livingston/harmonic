@@ -359,13 +359,8 @@ class Harmonic:
             logger.info("Created transit list: %s", output_list)
             logger.info("Found %d transits", len(transit_df))
 
-def cli():
-
-    import time
-    tick = time.time()
-
+def _build_parser():
     import argparse
-
     parser = argparse.ArgumentParser(description="Fit harmonic TTV model")
     parser.add_argument('-i', '--input', help='Input timing dataset (CSV)', type=str, default=None)
     parser.add_argument('-c', '--config', help='Configuration file (INI)', type=str, default=None)
@@ -390,6 +385,57 @@ def cli():
     parser.add_argument('--t-offset', help='Timing offset to add to get BJD (0 for BJD data, 2454833 for BKJD data)', type=float, default=0)
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output (debug level)')
     parser.add_argument('-q', '--quiet', action='store_true', help='Minimal output (warnings only)')
+    return parser
+
+
+# Fit-defining options a predict run must match; recovered from the fit's
+# args.txt so `harmonic -o <dir> --predict ...` needs nothing else.
+_FIT_OPTIONS = ['letters', 'non_transiting_outer', 'phase_offsets', 't_offset']
+
+
+def _fit_config_from_outdir(outdir, parser):
+    """Recover the fit's CLI options by re-parsing the args.txt the fit wrote
+    into outdir. Returns a Namespace, or None if absent/unparseable."""
+    import shlex
+    fp = os.path.join(outdir, 'args.txt')
+    if not os.path.exists(fp):
+        return None
+    try:
+        with open(fp) as f:
+            tokens = shlex.split(f.read().strip())
+        return parser.parse_args(tokens[1:])  # drop the program name
+    except (SystemExit, OSError, ValueError):
+        return None
+
+
+def _resolve_predict_options(args, parser):
+    """Fit-defining options for a predict run: taken from the fit's args.txt
+    when present (a predict must match its fit), falling back to the CLI
+    values otherwise. Explicit conflicting CLI flags are ignored with a
+    warning."""
+    fit = _fit_config_from_outdir(args.outdir, parser)
+    if fit is None:
+        return {n: getattr(args, n) for n in _FIT_OPTIONS}
+    resolved = {}
+    for n in _FIT_OPTIONS:
+        fit_val, cli_val = getattr(fit, n), getattr(args, n)
+        if cli_val != parser.get_default(n) and cli_val != fit_val:
+            logger.warning("--%s=%s ignored; using %s from the fit's args.txt in %s",
+                           n.replace('_', '-'), cli_val, fit_val, args.outdir)
+        resolved[n] = fit_val
+    logger.info("Recovered fit configuration from %s/args.txt (letters=%s, "
+                "non_transiting_outer=%s, phase_offsets=%s, t_offset=%.10g)",
+                args.outdir, resolved['letters'], resolved['non_transiting_outer'],
+                resolved['phase_offsets'], resolved['t_offset'])
+    return resolved
+
+
+def cli():
+
+    import time
+    tick = time.time()
+
+    parser = _build_parser()
     args = parser.parse_args()
 
     # Configure logging based on CLI args
@@ -463,10 +509,14 @@ def cli():
             logger.info("TTV fitting completed successfully")
 
         else:
-            # Prediction workflow
+            # Prediction workflow: recover fit-defining options from the fit's
+            # args.txt in outdir so they don't have to be re-supplied.
             logger.info("Starting transit prediction workflow")
-            harmonic = Harmonic(letters=letters, outdir=outdir, non_transiting_outer=non_transiting_outer, phase_offsets=phase_offsets)
-            harmonic.predict(args.predict, t_offset, output_list=args.predict_list)
+            opts = _resolve_predict_options(args, parser)
+            harmonic = Harmonic(letters=opts['letters'], outdir=outdir,
+                                non_transiting_outer=opts['non_transiting_outer'],
+                                phase_offsets=opts['phase_offsets'])
+            harmonic.predict(args.predict, opts['t_offset'], output_list=args.predict_list)
             logger.info("Transit prediction completed successfully")
 
         logger.debug("Script executed in %.1f seconds", time.time() - tick)

@@ -49,7 +49,9 @@ pip install -e .
 # Fit TTV model to Kepler-51 data
 harmonic -i examples/kep51.csv -c examples/kep51.ini -o results/
 
-# Predict transits for a specific time window  
+# Predict transits for a specific time window
+# (fit-defining options -l / --phase-offsets / --non-transiting-outer /
+#  --t-offset are recovered automatically from the fit in results/)
 harmonic -o results/ --predict "2023-09-17 16:00" "2023-09-17 21:30"
 ```
 
@@ -218,6 +220,8 @@ Key options:
 - `--predict-list`: Output CSV file with predicted transit times
 - `--phase-offsets`: Allow different phase offsets for each planet pair
 - `--t-offset`: Timing offset to add to get BJD (e.g. 2454833 for BKJD data)
+
+For a prediction run, the fit-defining options (`-l`, `--phase-offsets`, `--non-transiting-outer`, `--t-offset`) are read back from the fit's `args.txt` in the output directory, so `harmonic -o <dir> --predict ...` is all you need; any conflicting flag you pass is ignored with a warning.
 - `-n, --non-transiting-outer`: Include non-transiting outer planet
 - `--clobber`: Overwrite existing results
 
