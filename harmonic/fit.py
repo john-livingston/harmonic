@@ -129,11 +129,8 @@ def _check_ratio_pileup(fc, spec):
     """Warn when a shared-phase amplitude-ratio posterior piles against its
     prior bound: the ratio only diverges when the inner planet's amplitude is
     consistent with zero, i.e. the strict anti-phase (shared-phase) model
-    cannot represent the pair. Within the Lithwick+2012 formalism itself,
-    anti-phase deviations peak near the crossover |Z_free| ~ (2/3)|f||Delta|
-    (anti-phase is restored in both the forced- and free-eccentricity-dominated
-    limits), so pairs far from commensurability are the usual culprits -- see
-    README "Shared phase vs. phase offsets"."""
+    cannot represent the pair -- re-fit with --phase-offsets. See README
+    "Shared phase vs. phase offsets"."""
     for name in spec.names:
         if not name.startswith('r_'):
             continue

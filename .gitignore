@@ -16,3 +16,5 @@ fit_config.json
 data.csv
 config.ini
 *.png
+# committed README figures are the exception
+!assets/*.png

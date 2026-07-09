@@ -80,6 +80,26 @@ h.print_constraints(mstar=1.0)
 h.predict(['2023-09-17 16:00', '2023-09-17 21:30'])
 ```
 
+## Worked example: Kepler-51 and a fourth planet
+
+Kepler-51 is a three-planet system (b, c, d) with strong, mutually-interacting TTVs. Fitting the Kepler-baseline transit times (through 2016) with three planets reproduces the data well:
+
+```bash
+harmonic -i examples/kep51.csv -c examples/kep51.ini -o kep51/
+```
+
+![Kepler-51 three-planet fit](assets/kep51_3planet.png)
+
+Extending the baseline to 2024 adds post-Kepler transits — including the JWST-era timing of Kepler-51d that Masuda et al. (2024) found strongly discrepant with any three-planet model. Re-fitting the extended data with three planets is poor (reduced χ² ≈ 20). Adding a **fourth, non-transiting outer planet** with `-n` restores the fit (reduced χ² ≈ 4). Its mass is only weakly constrained by these data (M_e ≈ 5 ± 5 M⊕ here), but of the same order as the ~5 M⊕ that Masuda et al. (2024) find for Kepler-51e in their preferred solution near a 2:1 resonance with Kepler-51d (their mass is likewise poorly constrained in general, ≲ M_Jup):
+
+```bash
+harmonic -i examples/kep51-extended.csv -c examples/kep51-extended.ini -o kep51-extended/ -n
+```
+
+![Kepler-51 four-planet fit (extended baseline)](assets/kep51_extended_4planet.png)
+
+The non-transiting planet is constrained purely by the gravitational perturbation it imprints on the transit times of the inner three — the same principle that lets `harmonic` weigh unseen companions from timing data alone. See Masuda et al. (2024), [arXiv:2410.01625](https://arxiv.org/abs/2410.01625).
+
 ## Input Data Format
 
 ### Transit Times CSV
@@ -136,11 +156,12 @@ The package generates several output files in the specified directory:
 
 ## Scientific Background
 
-This package implements the harmonic TTV analysis method described in the literature for studying multi-planet systems. The approach models TTVs as superpositions of sinusoidal variations at specific periods related to planetary orbital resonances.
+This package implements the harmonic TTV analysis method described in the literature for studying multi-planet systems. The approach models TTVs as superpositions of sinusoidal variations at specific periods related to planetary orbital resonances. It is described and applied in detail (Methods and Supplementary Information) in [Livingston et al. (2026)](https://www.nature.com/articles/s41586-025-09840-z).
 
-Key equations and methods are based on:
+Further reading:
 - Lithwick et al. (2012) - TTV mass constraints
-- Nesvorný & Vokrouhlický (2016) - general Hamiltonian TTV formalism (resonant and near-resonant)
+- Nesvorný & Vokrouhlický (2016) - analytic Hamiltonian TTV model for planets in resonance
+- Masuda et al. (2024) - Kepler-51's fourth planet from a decade-long TTV baseline
 - Agol et al. (2005) - TTV theory
 
 ### Model Parameters
@@ -158,13 +179,9 @@ With `--phase-offsets`, each planet in a pair gets independent `as`/`ac` amplitu
 
 ### Shared phase vs. phase offsets
 
-The default (shared-phase) mode assumes the two planets' TTV sinusoids are exactly anti-correlated (relative phase of 180°, encoded by the sign of `r_ji`). In the Lithwick, Xie & Wu (2012) formalism, exact anti-phase holds in two limits: when the TTVs are dominated by forced eccentricity (|Z_free| << |f||Δ|) and when they are dominated by free eccentricity (|Z_free| >> |f||Δ|). In between, the complex amplitudes V ∝ (−f − (3/2)Z*_free/Δ) and V′ ∝ (−g + (3/2)Z*_free/Δ) rotate by different angles, so the relative phase deviates from 180° — maximally near the crossover |Z_free| ≈ (2/3)|f||Δ|. Deviations from perfect anti-phase are thus a prediction of the analytic near-resonant theory itself, not only of full N-body dynamics — the Lithwick regime is the non-resonant special case of the more general Hamiltonian formalism of Nesvorný & Vokrouhlický (2016), which also covers near-resonant and resonant configurations.
+The default (shared-phase) mode ties the two planets of a pair to a single TTV phase and takes their sinusoids to be exactly anti-correlated (relative phase 180°, encoded by the sign of `r_ji`). This is the leading-order near-resonant behaviour (Lithwick, Xie & Wu 2012); in general, free eccentricity can shift a planet's TTV phase, so the true relative phase of a pair may depart from 180°.
 
-Because the crossover eccentricity scales with the distance from commensurability |Δ|, pairs far from resonance have the highest crossover — so even nearly circular (dynamically cool) systems can show large phase offsets for their widest-of-resonance pair while their tightly coupled pairs stay near anti-phase. V1298 Tau is a working example: the near-commensurate c/d and b/e pairs sit within a few degrees of anti-phase, while d/b (|Δ| ≈ 0.02, the furthest from commensurability) shows a ~27° offset.
-
-When the shared-phase model cannot represent such a pair, the fit compensates by collapsing the inner planet's amplitude toward zero and inflating `r_ji`, so the `r_ji` posterior piles up against its prior bound (harmonic warns when it detects this). In that case re-fit with `--phase-offsets` — the measured relative phase is itself physically interesting, since the deviation from 180° encodes the free eccentricities.
-
-**TODO:** try a symmetric reparametrization of the shared-phase mode — `(v_in, v_out, φ_shared)` instead of `(as, ac, r)` — which keeps the shared-phase constraint but has no ratio divergence when either amplitude is consistent with zero.
+When the shared-phase model cannot represent such a pair, the fit compensates by collapsing the inner planet's amplitude toward zero and inflating `r_ji`, so the `r_ji` posterior piles up against its prior bound (harmonic warns when it detects this). In that case re-fit with `--phase-offsets`, which gives each planet its own phase.
 
 ## Examples
 
