@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import logging
 import sys
 import os
 
-def setup_logging(console_level=logging.INFO, file_level=logging.INFO, format_string=None, log_file=None):
+def setup_logging(console_level: int = logging.INFO, file_level: int = logging.INFO,
+                  format_string: str | None = None, log_file: str | None = None):
     """Setup logging configuration for harmonic package
     
     Args:
@@ -52,5 +55,6 @@ def setup_logging(console_level=logging.INFO, file_level=logging.INFO, format_st
     logging.getLogger('astropy').setLevel(logging.WARNING)
 
 from .exceptions import HarmonicError, ConfigurationError, DataError, PredictionError
+from .harmonic import Harmonic
 
 __version__ = '0.4.0'
