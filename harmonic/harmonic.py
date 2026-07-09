@@ -388,46 +388,51 @@ def _build_parser():
     return parser
 
 
-# Fit-defining options a predict run must match; recovered from the fit's
-# args.txt so `harmonic -o <dir> --predict ...` needs nothing else.
+# Fit-defining options a predict run must match; saved to fit_config.json at
+# fit time so `harmonic -o <dir> --predict ...` needs nothing else.
 _FIT_OPTIONS = ['letters', 'non_transiting_outer', 'phase_offsets', 't_offset']
+_FIT_CONFIG = 'fit_config.json'
 
 
-def _fit_config_from_outdir(outdir, parser):
-    """Recover the fit's CLI options by re-parsing the args.txt the fit wrote
-    into outdir. Returns a Namespace, or None if absent/unparseable."""
-    import shlex
-    fp = os.path.join(outdir, 'args.txt')
+def _write_fit_config(outdir, args):
+    """Persist the fit-defining options so a later predict run can recover them."""
+    import json
+    with open(os.path.join(outdir, _FIT_CONFIG), 'w') as f:
+        json.dump({n: getattr(args, n) for n in _FIT_OPTIONS}, f, indent=2)
+
+
+def _read_fit_config(outdir):
+    """Load the fit-defining options saved by the fit run, or None if the file
+    is absent, unreadable, or missing any expected key."""
+    import json
+    fp = os.path.join(outdir, _FIT_CONFIG)
     if not os.path.exists(fp):
         return None
     try:
         with open(fp) as f:
-            tokens = shlex.split(f.read().strip())
-        return parser.parse_args(tokens[1:])  # drop the program name
-    except (SystemExit, OSError, ValueError):
+            cfg = json.load(f)
+        return {n: cfg[n] for n in _FIT_OPTIONS}
+    except (OSError, ValueError, KeyError):
         return None
 
 
 def _resolve_predict_options(args, parser):
-    """Fit-defining options for a predict run: taken from the fit's args.txt
-    when present (a predict must match its fit), falling back to the CLI
-    values otherwise. Explicit conflicting CLI flags are ignored with a
-    warning."""
-    fit = _fit_config_from_outdir(args.outdir, parser)
+    """Fit-defining options for a predict run: taken from fit_config.json when
+    present (a predict must match its fit), falling back to the CLI values
+    otherwise. Explicit conflicting CLI flags are ignored with a warning."""
+    fit = _read_fit_config(args.outdir)
     if fit is None:
         return {n: getattr(args, n) for n in _FIT_OPTIONS}
-    resolved = {}
     for n in _FIT_OPTIONS:
-        fit_val, cli_val = getattr(fit, n), getattr(args, n)
-        if cli_val != parser.get_default(n) and cli_val != fit_val:
-            logger.warning("--%s=%s ignored; using %s from the fit's args.txt in %s",
-                           n.replace('_', '-'), cli_val, fit_val, args.outdir)
-        resolved[n] = fit_val
-    logger.info("Recovered fit configuration from %s/args.txt (letters=%s, "
+        cli_val = getattr(args, n)
+        if cli_val != parser.get_default(n) and cli_val != fit[n]:
+            logger.warning("--%s=%s ignored; using %s from %s in %s",
+                           n.replace('_', '-'), cli_val, fit[n], _FIT_CONFIG, args.outdir)
+    logger.info("Recovered fit configuration from %s/%s (letters=%s, "
                 "non_transiting_outer=%s, phase_offsets=%s, t_offset=%.10g)",
-                args.outdir, resolved['letters'], resolved['non_transiting_outer'],
-                resolved['phase_offsets'], resolved['t_offset'])
-    return resolved
+                args.outdir, _FIT_CONFIG, fit['letters'], fit['non_transiting_outer'],
+                fit['phase_offsets'], fit['t_offset'])
+    return fit
 
 
 def cli():
@@ -490,10 +495,13 @@ def cli():
         if fp_config and not os.path.exists(fp_config):
             raise ConfigurationError(f"config file not found: {fp_config}")
 
-        # Save input files with error handling
-        if args.predict is None or clobber: # only save the input used to create the fit
+        # Save the inputs used to create the fit: args.txt is the human-readable
+        # command record; fit_config.json is the machine-readable fit-defining
+        # options a later predict run recovers.
+        if args.predict is None or clobber:
             with open(os.path.join(outdir, 'args.txt'), 'w') as w:
                 w.write(" ".join(sys.argv)+'\n')
+            _write_fit_config(outdir, args)
             if fp_data:
                 shutil.copyfile(fp_data, os.path.join(outdir, 'data.csv'))
             if fp_config:

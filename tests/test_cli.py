@@ -16,6 +16,7 @@ def test_kep51_fit_smoke(tmp_path):
     with patch.object(_sys, 'argv', argv):
         cli()
     assert (tmp_path / 'samples.csv.gz').exists()
+    assert (tmp_path / 'fit_config.json').exists()
     for f in ('corner.png', 'trace.png', 'fit.png', 'init.png'):
         assert (tmp_path / f).exists(), f
     fc = pd.read_csv(tmp_path / 'samples.csv.gz')
@@ -44,29 +45,36 @@ def test_noncontiguous_planet_ids_error(tmp_path, sample_config_file):
                  letters='bc', outdir=str(tmp_path))
 
 
-def test_fit_config_recovered_from_argstxt(tmp_path):
-    from harmonic.harmonic import _build_parser, _fit_config_from_outdir
-    (tmp_path / 'args.txt').write_text(
-        'harmonic -i a.csv -c b.ini -o out -l cdbe --phase-offsets '
-        '--t-offset 2454833 -w 100 --clobber\n')
-    cfg = _fit_config_from_outdir(str(tmp_path), _build_parser())
-    assert cfg is not None
-    assert cfg.letters == 'cdbe'
-    assert cfg.phase_offsets is True
-    assert cfg.non_transiting_outer is False
-    assert cfg.t_offset == 2454833
+def test_fit_config_round_trip(tmp_path):
+    from harmonic.harmonic import _build_parser, _write_fit_config, _read_fit_config
+    args = _build_parser().parse_args(
+        ['-o', str(tmp_path), '-l', 'cdbe', '--phase-offsets', '--t-offset', '2454833'])
+    _write_fit_config(str(tmp_path), args)
+    assert (tmp_path / 'fit_config.json').exists()
+    assert _read_fit_config(str(tmp_path)) == {
+        'letters': 'cdbe', 'non_transiting_outer': False,
+        'phase_offsets': True, 't_offset': 2454833}
 
 
-def test_fit_config_none_when_no_argstxt(tmp_path):
-    from harmonic.harmonic import _build_parser, _fit_config_from_outdir
-    assert _fit_config_from_outdir(str(tmp_path), _build_parser()) is None
+def test_read_fit_config_none_when_missing(tmp_path):
+    from harmonic.harmonic import _read_fit_config
+    assert _read_fit_config(str(tmp_path)) is None
+
+
+def test_read_fit_config_none_when_malformed(tmp_path):
+    from harmonic.harmonic import _read_fit_config
+    (tmp_path / 'fit_config.json').write_text('{not valid json')
+    assert _read_fit_config(str(tmp_path)) is None
+    (tmp_path / 'fit_config.json').write_text('{"letters": "cdbe"}')  # missing keys
+    assert _read_fit_config(str(tmp_path)) is None
 
 
 def test_resolve_predict_options_prefers_fit(tmp_path):
-    from harmonic.harmonic import _build_parser, _resolve_predict_options
+    from harmonic.harmonic import _build_parser, _write_fit_config, _resolve_predict_options
     parser = _build_parser()
-    (tmp_path / 'args.txt').write_text(
-        'harmonic -o out -l cdbe --phase-offsets -n --t-offset 2454833 --clobber\n')
+    fit_args = parser.parse_args(
+        ['-o', str(tmp_path), '-l', 'cdbe', '--phase-offsets', '-n', '--t-offset', '2454833'])
+    _write_fit_config(str(tmp_path), fit_args)
     # predict invocation supplies only -o (the pain point being fixed)
     args = parser.parse_args(['-o', str(tmp_path), '--predict', 'a', 'b'])
     opts = _resolve_predict_options(args, parser)
@@ -76,9 +84,10 @@ def test_resolve_predict_options_prefers_fit(tmp_path):
 
 def test_resolve_predict_options_warns_on_conflict(tmp_path, caplog):
     import logging
-    from harmonic.harmonic import _build_parser, _resolve_predict_options
+    from harmonic.harmonic import _build_parser, _write_fit_config, _resolve_predict_options
     parser = _build_parser()
-    (tmp_path / 'args.txt').write_text('harmonic -o out -l cdbe --phase-offsets --clobber\n')
+    _write_fit_config(str(tmp_path),
+                      parser.parse_args(['-o', str(tmp_path), '-l', 'cdbe', '--phase-offsets']))
     args = parser.parse_args(['-o', str(tmp_path), '-l', 'bcde', '--predict', 'a', 'b'])
     with caplog.at_level(logging.WARNING, logger='harmonic.harmonic'):
         opts = _resolve_predict_options(args, parser)
@@ -86,7 +95,7 @@ def test_resolve_predict_options_warns_on_conflict(tmp_path, caplog):
     assert any('letters' in r.message and 'ignored' in r.message for r in caplog.records)
 
 
-def test_resolve_predict_options_fallback_no_argstxt(tmp_path):
+def test_resolve_predict_options_fallback_no_config(tmp_path):
     from harmonic.harmonic import _build_parser, _resolve_predict_options
     parser = _build_parser()
     args = parser.parse_args(['-o', str(tmp_path), '-l', 'bcde', '--predict', 'a', 'b'])

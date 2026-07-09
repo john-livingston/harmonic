@@ -126,6 +126,8 @@ c = 0.12            # Planet c duration (days)
 The package generates several output files in the specified directory:
 
 - `samples.csv.gz`: MCMC chain samples
+- `fit_config.json`: fit-defining options (recovered automatically by `--predict`)
+- `args.txt`: the exact command used for the fit
 - `corner.png`: Corner plot of posterior distributions
 - `trace.png`: MCMC trace plots
 - `fit.png`: Best-fit model comparison with data
@@ -221,7 +223,7 @@ Key options:
 - `--phase-offsets`: Allow different phase offsets for each planet pair
 - `--t-offset`: Timing offset to add to get BJD (e.g. 2454833 for BKJD data)
 
-For a prediction run, the fit-defining options (`-l`, `--phase-offsets`, `--non-transiting-outer`, `--t-offset`) are read back from the fit's `args.txt` in the output directory, so `harmonic -o <dir> --predict ...` is all you need; any conflicting flag you pass is ignored with a warning.
+For a prediction run, the fit-defining options (`-l`, `--phase-offsets`, `--non-transiting-outer`, `--t-offset`) are read back from `fit_config.json` in the output directory, so `harmonic -o <dir> --predict ...` is all you need; any conflicting flag you pass is ignored with a warning.
 - `-n, --non-transiting-outer`: Include non-transiting outer planet
 - `--clobber`: Overwrite existing results
 
