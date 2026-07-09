@@ -107,3 +107,18 @@ def test_chain_columns_absolute_in_bjd_frame():
     fc, chain, diag = run_fit(spec, planet, epoch, tc, err, 2, 'bc', False, False,
                               walkers=32, burn=100, steps=100, thin=5, nproc=1, seed=1)
     assert abs(fc['t0_b'].median() - (TRUE['t0_b'] + 2454833.0)) < 0.1
+
+
+def test_optimize_escapes_bad_phase_basin_kep51(tmp_path):
+    # regression: single-start TRF on the shipped kep51 example fell into the
+    # degenerate (as->0, r->R_MAX) valley of the cd pair (reduced chisq 4.32,
+    # r_dc railed at +20); phase/sign multi-start must reach the true optimum
+    from harmonic.harmonic import Harmonic
+    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    t = h.times
+    res = optimize(h.spec, np.array(t.planet), np.array(t.epoch), np.array(t.tc),
+                   np.array(t.tc_unc), h.nplanets, h.planet_letters, False, False)
+    dof = len(t) - len(h.spec)
+    assert np.sum(res.fun**2) / dof < 4.0
+    d = h.spec.to_dict(res.x)
+    assert abs(d['r_dc']) < 19.0  # not railed at R_MAX

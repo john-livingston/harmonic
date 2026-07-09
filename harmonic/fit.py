@@ -30,6 +30,38 @@ def log_prob(theta, spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
     return lp - 0.5 * np.sum(r**2)
 
 
+def _pair_flip_sets(spec, phase_offsets):
+    """Per-pair sign-flip variants of the initial guess: the TTV phase guesses
+    from the ini are the least reliable inputs, and a wrong pair phase can
+    steer the optimizer into the degenerate (inner amp -> 0, r -> R_MAX)
+    valley of the shared-phase parametrization. Flipping (as, ac) rotates a
+    pair's phase by pi; flipping r (or the outer as/ac) flips the planets'
+    relative sign."""
+    flip_sets = []
+    if phase_offsets:
+        keys = [n[3:] for n in spec.names if n.startswith('as_')]
+        for k in keys:
+            if k[::-1] in keys and keys.index(k) > keys.index(k[::-1]):
+                continue  # handle each pair once, from the inner side
+            first = [f'as_{k}', f'ac_{k}']
+            second = [f'as_{k[::-1]}', f'ac_{k[::-1]}'] if k[::-1] in keys else None
+            flip_sets.append((first, second))
+    else:
+        pairs = [n[3:] for n in spec.names if n.startswith('as_')]
+        for k in pairs:
+            first = [f'as_{k}', f'ac_{k}']
+            rname = f'r_{k[::-1]}'
+            second = [rname] if rname in spec.index else None
+            flip_sets.append((first, second))
+    out = []
+    for first, second in flip_sets:
+        variants = [first]
+        if second is not None:
+            variants += [second, first + second]
+        out.append(variants)
+    return out
+
+
 def optimize(spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
              non_transiting_outer, phase_offsets):
     def f(theta):
@@ -42,12 +74,32 @@ def optimize(spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
                          nplanets, planet_letters, non_transiting_outer,
                          phase_offsets, t_ref=spec.t_ref) / tc_err[:, None]
 
-    res = least_squares(f, spec.x0, jac=jac, bounds=(spec.lo, spec.hi),
-                        method='trf', x_scale='jac')
-    chisq = float(np.sum(res.fun**2))
+    eps = 1e-12 * (spec.hi - spec.lo)
+
+    def run(x0):
+        return least_squares(f, np.clip(x0, spec.lo + eps, spec.hi - eps),
+                             jac=jac, bounds=(spec.lo, spec.hi),
+                             method='trf', x_scale='jac')
+
+    # Greedy multi-start over per-pair phase/sign flips of the initial guess
+    # (1 + 3 x npairs TRF runs): immune to wrong ini phase guesses.
+    best_x0 = spec.x0.copy()
+    best = run(best_x0)
+    nstarts = 1
+    for variants in _pair_flip_sets(spec, phase_offsets):
+        for names in variants:
+            x0 = best_x0.copy()
+            for nm in names:
+                x0[spec.index[nm]] *= -1
+            cand = run(x0)
+            nstarts += 1
+            if float(np.sum(cand.fun**2)) < float(np.sum(best.fun**2)) - 1e-9:
+                best, best_x0 = cand, x0
+    chisq = float(np.sum(best.fun**2))
     dof = max(len(tc) - len(spec), 1)
-    logger.info("least_squares: status=%d chisq=%.2f reduced=%.3f", res.status, chisq, chisq / dof)
-    return res
+    logger.info("least_squares: %d starts, status=%d chisq=%.2f reduced=%.3f",
+                nstarts, best.status, chisq, chisq / dof)
+    return best
 
 
 def _walker_ball(res, spec, nwalkers, rng):
