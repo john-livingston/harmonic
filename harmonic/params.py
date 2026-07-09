@@ -58,7 +58,7 @@ def _pairs(planet_letters):
     return list(zip(planet_letters[:-1], planet_letters[1:]))
 
 
-def build_spec(p_init, ephem, times, nplanets, planet_letters,
+def build_spec(p_init, ephem, times, planet_letters,
                non_transiting_outer=False, phase_offsets=False):
     spec = ParamSpec()
     spec.t_ref = float(round(float(times.tc.median())))

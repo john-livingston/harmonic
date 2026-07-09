@@ -65,7 +65,8 @@ def plot_corner(fc, labels=None, fp=None):
     return _finish(fig, fp)
 
 
-def plot_bestfit(ttv, times, tci, planeti, epochi, nplanets, planet_letters, non_transiting_outer, fp=None):
+def plot_bestfit(ttv, times, tci, planeti, epochi, planet_letters, non_transiting_outer, fp=None):
+    nplanets = len(planet_letters)
     if non_transiting_outer:
         npmax = nplanets-1
     else:
@@ -87,8 +88,9 @@ def plot_bestfit(ttv, times, tci, planeti, epochi, nplanets, planet_letters, non
     return _finish(fig, fp)
 
 
-def plot_samples(ttv, times, ephem, flatchain, planeti, nplanets, planet_letters, non_transiting_outer, phase_offsets=False, tmax=None, fp=None, t_ref=0.0):
+def plot_samples(ttv, times, ephem, flatchain, planeti, planet_letters, non_transiting_outer, phase_offsets=False, tmax=None, fp=None, t_ref=0.0):
 
+    nplanets = len(planet_letters)
     if tmax is None:
         tmax = times.tc.max()
 
@@ -127,12 +129,12 @@ def plot_samples(ttv, times, ephem, flatchain, planeti, nplanets, planet_letters
                     epochi = np.arange(0, ntrans)
 
                     planeti_arr = np.array([planet]*ntrans)
-                    tc = model(pas, planeti_arr, epochi, nplanets, planet_letters, non_transiting_outer, phase_offsets, t_ref=t_ref)
+                    tc = model(pas, planeti_arr, epochi, planet_letters, non_transiting_outer, phase_offsets, t_ref=t_ref)
                     ttv.plot_model(planet, tc, epochi, ax=ax, color=colors[planet], mew=0, alpha=0.08)
                     ax.set_ylabel(f'TTV {planet} (min)')
 
                     ax = resaxL[j]
-                    resid = times.tc - model(pas, times.planet, times.epoch, nplanets, planet_letters, non_transiting_outer, phase_offsets, t_ref=t_ref)
+                    resid = times.tc - model(pas, times.planet, times.epoch, planet_letters, non_transiting_outer, phase_offsets, t_ref=t_ref)
                     idx = np.where(times.planet==planet)[0]
                     ax.errorbar(times.tc[idx], resid[idx]*24*60, times.tc_unc[idx]*1440,
                                 color=colors[planet], marker='.', ls='', mew=0, alpha=0.4)

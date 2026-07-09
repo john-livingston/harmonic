@@ -35,26 +35,26 @@ class TestChooseJ:
 
 class TestConstraints:
     def test_returns_dataframe_both_directions(self):
-        df = print_constraints(make_chain(), 2, 'bc', False, seed=1)
+        df = print_constraints(make_chain(), 'bc', False, seed=1)
         # 2:1-ish pair (85.32/45.155 = 1.889 -> j=2); both planets constrained
         assert set(df.planet) == {'b', 'c'}
         assert (df.j == 2).all()
         assert (df.mass_me > 0).all()
 
     def test_mstar_scales_mass_up(self):
-        m1 = print_constraints(make_chain(), 2, 'bc', False, mstar=1.0, seed=1)
-        m2 = print_constraints(make_chain(), 2, 'bc', False, mstar=2.0, seed=1)
+        m1 = print_constraints(make_chain(), 'bc', False, mstar=1.0, seed=1)
+        m2 = print_constraints(make_chain(), 'bc', False, mstar=2.0, seed=1)
         # audit bug: code divided by mstar; mass must scale UP with mstar
         np.testing.assert_allclose(m2.mass_me.values, 2 * m1.mass_me.values, rtol=1e-6)
 
     def test_seed_reproducible(self):
-        a = print_constraints(make_chain(), 2, 'bc', False, seed=7)
-        b = print_constraints(make_chain(), 2, 'bc', False, seed=7)
+        a = print_constraints(make_chain(), 'bc', False, seed=7)
+        b = print_constraints(make_chain(), 'bc', False, seed=7)
         pd.testing.assert_frame_equal(a, b)
 
     def test_non_transiting_outer_pair_analyzed(self):
         fc = make_chain().drop(columns=['per_c', 't0_c', 'r_cb'])
         ephem = pd.DataFrame({'per': [45.155, 85.32], 'tc': [100., 100.]}, index=['b', 'c'])
-        df = print_constraints(fc, 2, 'bc', True, ephem=ephem, seed=1)
+        df = print_constraints(fc, 'bc', True, ephem=ephem, seed=1)
         # audit bug: this pair was silently skipped; inner amplitude constrains outer mass
         assert 'c' in set(df.planet)

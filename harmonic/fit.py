@@ -19,13 +19,13 @@ def log_prior(theta, spec):
     return lp
 
 
-def log_prob(theta, spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
+def log_prob(theta, spec, planet, epoch, tc, tc_err, planet_letters,
              non_transiting_outer, phase_offsets):
     lp = log_prior(theta, spec)
     if not np.isfinite(lp):
         return -np.inf
     r = residual(spec.to_dict(theta), planet, epoch, tc, tc_err,
-                 nplanets, planet_letters, non_transiting_outer, phase_offsets,
+                 planet_letters, non_transiting_outer, phase_offsets,
                  t_ref=spec.t_ref)
     return lp - 0.5 * np.sum(r**2)
 
@@ -62,16 +62,16 @@ def _pair_flip_sets(spec, phase_offsets):
     return out
 
 
-def optimize(spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
+def optimize(spec, planet, epoch, tc, tc_err, planet_letters,
              non_transiting_outer, phase_offsets):
     def f(theta):
         return residual(spec.to_dict(theta), planet, epoch, tc, tc_err,
-                        nplanets, planet_letters, non_transiting_outer, phase_offsets,
+                        planet_letters, non_transiting_outer, phase_offsets,
                         t_ref=spec.t_ref)
 
     def jac(theta):
         return -jacobian(spec.to_dict(theta), spec.names, planet, epoch,
-                         nplanets, planet_letters, non_transiting_outer,
+                         planet_letters, non_transiting_outer,
                          phase_offsets, t_ref=spec.t_ref) / tc_err[:, None]
 
     eps = 1e-12 * (spec.hi - spec.lo)
@@ -145,14 +145,14 @@ def _check_ratio_pileup(fc, spec):
                 "consider re-fitting with --phase-offsets", name, 100 * frac, pair)
 
 
-def run_fit(spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
+def run_fit(spec, planet, epoch, tc, tc_err, planet_letters,
             non_transiting_outer, phase_offsets, walkers=100, burn=1000,
             steps=2000, thin=10, nproc=1, seed=42):
     rng = np.random.default_rng(seed)
-    res = optimize(spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
+    res = optimize(spec, planet, epoch, tc, tc_err, planet_letters,
                    non_transiting_outer, phase_offsets)
     p0 = _walker_ball(res, spec, walkers, rng)
-    args = (spec, planet, epoch, tc, tc_err, nplanets, planet_letters,
+    args = (spec, planet, epoch, tc, tc_err, planet_letters,
             non_transiting_outer, phase_offsets)
     if nproc > 1:
         from multiprocessing import Pool

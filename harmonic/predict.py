@@ -14,7 +14,7 @@ def trunc(x):
     return ':'.join(x.split('.')[0].split(':')[:-1])
 
 
-def scan_transits(flatchain, ephem, nplanets, planet_letters, non_transiting_outer,
+def scan_transits(flatchain, ephem, planet_letters, non_transiting_outer,
                   t14s, window, phase_offsets=False, t_offset=0, nsamples=1000, seed=0,
                   t_ref=0.0):
     """
@@ -26,8 +26,6 @@ def scan_transits(flatchain, ephem, nplanets, planet_letters, non_transiting_out
         MCMC samples (plain columns, e.g. t0_b, per_b, as_bc, ...).
     ephem : DataFrame
         Ephemeris data (in same time system as input data), indexed by planet letter.
-    nplanets : int
-        Number of planets.
     planet_letters : str
         Planet letter designations.
     non_transiting_outer : bool
@@ -67,7 +65,7 @@ def scan_transits(flatchain, ephem, nplanets, planet_letters, non_transiting_out
         e_hi = int(np.ceil((w1 + t14 / 2 - t0) / period)) + 1
         epochs = np.arange(e_lo, e_hi + 1, dtype=float)
         planeti = np.array([planet] * len(epochs))
-        preds = np.array([model(d, planeti, epochs, nplanets, planet_letters,
+        preds = np.array([model(d, planeti, epochs, planet_letters,
                                 non_transiting_outer, phase_offsets, t_ref=t_ref) for d in dicts])
         mn, sd, md = preds.mean(0), preds.std(0), np.median(preds, axis=0)
         for k, ep in enumerate(epochs):

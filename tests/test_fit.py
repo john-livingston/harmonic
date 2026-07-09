@@ -14,11 +14,11 @@ def _make_synth(shift=0.0):
     epoch = np.array(list(range(30)) + list(range(16)), dtype=float)
     sigma = 0.0015
     true = dict(TRUE, t0_b=TRUE['t0_b'] + shift, t0_c=TRUE['t0_c'] + shift)
-    tc = model(true, planet, epoch, 2, 'bc', False, t_ref=shift) + rng.normal(0, sigma, len(epoch))
+    tc = model(true, planet, epoch, 'bc', False, t_ref=shift) + rng.normal(0, sigma, len(epoch))
     times = pd.DataFrame(dict(planet=planet, epoch=epoch, tc=tc, tc_unc=sigma))
     ephem = pd.DataFrame({'per': [45.155, 85.32], 'tc': [100.0 + shift, 110.0 + shift]}, index=['b', 'c'])
     p_init = {'a_bc': 0.008, 'a_cb': -0.015, 'per_bc': 700.0, 't_bc': 200.0 + shift}
-    spec = build_spec(p_init, ephem, times, 2, 'bc')
+    spec = build_spec(p_init, ephem, times, 'bc')
     return spec, planet, epoch, tc, np.full(len(tc), sigma)
 
 
@@ -28,7 +28,7 @@ def synth():
 
 def test_optimize_recovers_truth(synth):
     spec, planet, epoch, tc, err = synth
-    res = optimize(spec, planet, epoch, tc, err, 2, 'bc', False, False)
+    res = optimize(spec, planet, epoch, tc, err, 'bc', False, False)
     d = spec.to_dict(res.x)
     assert abs(d['per_bc'] - TRUE['per_bc']) < 30.0
     a_fit = np.hypot(d['as_bc'], d['ac_bc'])
@@ -36,7 +36,7 @@ def test_optimize_recovers_truth(synth):
 
 def test_mcmc_roundtrip_small(synth):
     spec, planet, epoch, tc, err = synth
-    fc, chain, diag = run_fit(spec, planet, epoch, tc, err, 2, 'bc', False, False,
+    fc, chain, diag = run_fit(spec, planet, epoch, tc, err, 'bc', False, False,
                               walkers=32, burn=200, steps=200, thin=5, nproc=1, seed=1)
     assert list(fc.columns) == spec.names
     assert chain.shape[1] == 32 and chain.shape[2] == len(spec)
@@ -47,8 +47,8 @@ def test_mcmc_roundtrip_small(synth):
 
 def test_seed_reproducible(synth):
     spec, planet, epoch, tc, err = synth
-    fc1, _, _ = run_fit(spec, planet, epoch, tc, err, 2, 'bc', False, False, 16, 50, 50, 2, 1, seed=5)
-    fc2, _, _ = run_fit(spec, planet, epoch, tc, err, 2, 'bc', False, False, 16, 50, 50, 2, 1, seed=5)
+    fc1, _, _ = run_fit(spec, planet, epoch, tc, err, 'bc', False, False, 16, 50, 50, 2, 1, seed=5)
+    fc2, _, _ = run_fit(spec, planet, epoch, tc, err, 'bc', False, False, 16, 50, 50, 2, 1, seed=5)
     pd.testing.assert_frame_equal(fc1, fc2)
 
 
@@ -93,7 +93,7 @@ def test_optimize_recovers_truth_bjd_frame():
     # regression: absolute-BJD times (t0 ~ 2.45e6) must not break the
     # optimizer (norm-based termination + trust-region conditioning)
     spec, planet, epoch, tc, err = _make_synth(shift=2454833.0)
-    res = optimize(spec, planet, epoch, tc, err, 2, 'bc', False, False)
+    res = optimize(spec, planet, epoch, tc, err, 'bc', False, False)
     d = spec.to_dict(res.x)
     assert abs(d['per_bc'] - TRUE['per_bc']) < 30.0
     a_fit = np.hypot(d['as_bc'], d['ac_bc'])
@@ -104,7 +104,7 @@ def test_optimize_recovers_truth_bjd_frame():
 
 def test_chain_columns_absolute_in_bjd_frame():
     spec, planet, epoch, tc, err = _make_synth(shift=2454833.0)
-    fc, chain, diag = run_fit(spec, planet, epoch, tc, err, 2, 'bc', False, False,
+    fc, chain, diag = run_fit(spec, planet, epoch, tc, err, 'bc', False, False,
                               walkers=32, burn=100, steps=100, thin=5, nproc=1, seed=1)
     assert abs(fc['t0_b'].median() - (TRUE['t0_b'] + 2454833.0)) < 0.1
 
@@ -117,7 +117,7 @@ def test_optimize_escapes_bad_phase_basin_kep51(tmp_path):
     h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
     t = h.times
     res = optimize(h.spec, np.array(t.planet), np.array(t.epoch), np.array(t.tc),
-                   np.array(t.tc_unc), h.nplanets, h.planet_letters, False, False)
+                   np.array(t.tc_unc), h.planet_letters, False, False)
     dof = len(t) - len(h.spec)
     assert np.sum(res.fun**2) / dof < 4.0
     d = h.spec.to_dict(res.x)

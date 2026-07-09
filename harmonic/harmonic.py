@@ -126,7 +126,7 @@ class Harmonic:
 
         # add params
         p_init = {k:float(v) for k,v in config['INIT'].items()}
-        spec = build_spec(p_init, ephem, times, nplanets, planet_letters, non_transiting_outer=non_transiting_outer, phase_offsets=phase_offsets)
+        spec = build_spec(p_init, ephem, times, planet_letters, non_transiting_outer=non_transiting_outer, phase_offsets=phase_offsets)
 
         fp = os.path.join(outdir, 'samples.csv.gz')
         if os.path.exists(fp):
@@ -145,7 +145,6 @@ class Harmonic:
         self.config = config
         self.times = times
         self.ttv = ttv
-        self.nplanets = nplanets
         self.planet_letters = planet_letters
         self.ephem = ephem
         self.epochi = epochi
@@ -198,7 +197,6 @@ class Harmonic:
             outdir = self.outdir
             ttv = self.ttv
             times = self.times
-            nplanets = self.nplanets
             planet_letters = self.planet_letters
             non_transiting_outer = self.non_transiting_outer
             phase_offsets = self.phase_offsets
@@ -213,12 +211,12 @@ class Harmonic:
             from .fit import run_fit
             from .params import derived_frame
             fc, chain, diag = run_fit(self.spec, planet, epoch, tc, tc_err,
-                                      nplanets, planet_letters, non_transiting_outer,
+                                      planet_letters, non_transiting_outer,
                                       phase_offsets, walkers, burn, steps, thin, nproc, seed)
-            tci = model(self.spec.to_dict(diag['x_opt']), planeti, epochi, nplanets,
+            tci = model(self.spec.to_dict(diag['x_opt']), planeti, epochi,
                         planet_letters, non_transiting_outer, phase_offsets,
                         t_ref=self.spec.t_ref)
-            plot_bestfit(ttv, times, tci, planeti, epochi, nplanets, planet_letters,
+            plot_bestfit(ttv, times, tci, planeti, epochi, planet_letters,
                          non_transiting_outer, fp=os.path.join(outdir, 'init.png'))
             fc.to_csv(os.path.join(outdir, 'samples.csv.gz'), index=False)
             plot_trace(chain, self.spec.labels(), fp=os.path.join(outdir, 'trace.png'))
@@ -246,7 +244,6 @@ class Harmonic:
             self.ephem,
             self.flatchain,
             self.planeti,
-            self.nplanets,
             self.planet_letters,
             self.non_transiting_outer,
             self.phase_offsets,
@@ -269,7 +266,6 @@ class Harmonic:
         self._require_chain()
         return print_constraints(
             self.flatchain,
-            self.nplanets,
             self.planet_letters,
             self.non_transiting_outer,
             mstar=mstar,
@@ -331,7 +327,6 @@ class Harmonic:
         transit_df = scan_transits(
             self.flatchain,
             self.ephem,
-            self.nplanets,
             self.planet_letters,
             self.non_transiting_outer,
             t14s,

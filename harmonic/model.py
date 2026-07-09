@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 
 
-def residual(pa, planet, epoch, tc, tc_err, nplanets, planet_letters, non_transiting_outer, phase_offsets=False, t_ref=0.0):
-    return (tc - model(pa, planet, epoch, nplanets, planet_letters, non_transiting_outer, phase_offsets, t_ref=t_ref))/tc_err
+def residual(pa, planet, epoch, tc, tc_err, planet_letters, non_transiting_outer, phase_offsets=False, t_ref=0.0):
+    return (tc - model(pa, planet, epoch, planet_letters, non_transiting_outer, phase_offsets, t_ref=t_ref))/tc_err
 
 class TTV(object):
     def __init__(self,times):
@@ -40,7 +40,7 @@ def _terms(planet_letters, non_transiting_outer):
     return transiting, pairs
 
 
-def model(p, planet, epoch, nplanets, planet_letters, non_transiting_outer, phase_offsets=False, t_ref=0.0):
+def model(p, planet, epoch, planet_letters, non_transiting_outer, phase_offsets=False, t_ref=0.0):
     # t_ref: fixed phase pivot (data-frame time). Referencing the sinusoid
     # angle to the data epoch keeps the per_ttv likelihood smooth when tc is
     # in an absolute frame like BJD (with t_ref=0, dtheta/dper ~ tlin/per**2
@@ -72,7 +72,7 @@ def model(p, planet, epoch, nplanets, planet_letters, non_transiting_outer, phas
     return tc
 
 
-def jacobian(p, names, planet, epoch, nplanets, planet_letters, non_transiting_outer, phase_offsets=False, t_ref=0.0):
+def jacobian(p, names, planet, epoch, planet_letters, non_transiting_outer, phase_offsets=False, t_ref=0.0):
     planet = np.asarray(planet)
     epoch = np.asarray(epoch, dtype=float)
     transiting, pairs = _terms(planet_letters, non_transiting_outer)

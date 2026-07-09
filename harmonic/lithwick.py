@@ -98,7 +98,7 @@ def _constrain(v_obs, v_model_fn, mu, z, mstar):
     return m.mean(), m.std(), z[ix].mean(), z[ix].std()
 
 
-def print_constraints(flatchain, nplanets, planet_letters, non_transiting_outer,
+def print_constraints(flatchain, planet_letters, non_transiting_outer,
                       mstar=1.0, phase_offsets=False, ephem=None, seed=42,
                       mu_min_me=1.0, mu_max_me=30.0, z_max=0.1):
     """Lithwick+2012 mass/eccentricity constraints for every adjacent pair.
@@ -114,7 +114,7 @@ def print_constraints(flatchain, nplanets, planet_letters, non_transiting_outer,
                             np.log(mu_max_me * Mearth_per_Msun), ns))
     z = rng.uniform(0, z_max, ns)
     rows = []
-    for i in range(nplanets - 1):
+    for i in range(len(planet_letters) - 1):
         p_i, p_j = planet_letters[i], planet_letters[i + 1]
         outer_transits = not (non_transiting_outer and p_j == planet_letters[-1])
         p_ = flatchain[f'per_{p_i}'].values
