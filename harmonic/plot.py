@@ -20,6 +20,15 @@ def planet_colors(letters):
     return {l: PALETTE[i % len(PALETTE)] for i, l in enumerate(letters)}
 
 
+def _model_epochs(ep, t0, per, tmax):
+    """Integer epoch grid for a planet's model curve: spans its data epochs and
+    the plotted window (through tmax), padded by one epoch so the curve always
+    covers the last transit (a floored count would stop one epoch short when the
+    last data point defines tmax)."""
+    e_max = max(int(np.ceil((tmax - t0) / per)), int(np.max(ep))) + 1
+    return np.arange(int(np.min(ep)), e_max + 1)
+
+
 def _finish(fig, fp):
     if fp is not None:
         fig.savefig(fp, **SAVE_KW)
@@ -125,10 +134,9 @@ def plot_samples(ttv, times, ephem, flatchain, planeti, planet_letters, non_tran
                         ttv.plot_times(planet, ax=ax, lw=2, color='0.15', zorder=10,
                                        elinewidth=1, capsize=0, ms=4)
 
-                    ntrans = int((tmax - times[times.planet==planet].tc.min()) / ephem.loc[planet,'per'])
-                    epochi = np.arange(0, ntrans)
-
-                    planeti_arr = np.array([planet]*ntrans)
+                    epochi = _model_epochs(times[times.planet==planet].epoch,
+                                           ephem.loc[planet,'tc'], ephem.loc[planet,'per'], tmax)
+                    planeti_arr = np.array([planet]*len(epochi))
                     tc = model(pas, planeti_arr, epochi, planet_letters, non_transiting_outer, phase_offsets, t_ref=t_ref)
                     ttv.plot_model(planet, tc, epochi, ax=ax, color=colors[planet], mew=0, alpha=0.08)
                     ax.set_ylabel(f'TTV {planet} (min)')
