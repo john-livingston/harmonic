@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import corner
 
+from .model import model
+
 PALETTE = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#E69F00', '#56B4E9', '#F0E442', '#000000']  # Okabe-Ito
 STYLE = {
     'axes.spines.top': False, 'axes.spines.right': False,
@@ -25,13 +27,7 @@ def _finish(fig, fp):
     return fig
 
 
-def plot_trace(chain, labels, burn=None, plot_idx=None, fp=None):
-
-    if burn is not None:
-        chain = chain[burn:, :, :].copy()
-
-    if plot_idx is not None:
-        chain = chain[:, :, plot_idx].copy()
+def plot_trace(chain, labels, fp=None):
 
     nsteps, nwalkers, ndim = chain.shape
 
@@ -91,7 +87,7 @@ def plot_bestfit(ttv, times, tci, planeti, epochi, nplanets, planet_letters, non
     return _finish(fig, fp)
 
 
-def plot_samples(ttv, model, times, ephem, flatchain, planeti, nplanets, planet_letters, non_transiting_outer, phase_offsets=False, tmax=None, fp=None, t_ref=0.0):
+def plot_samples(ttv, times, ephem, flatchain, planeti, nplanets, planet_letters, non_transiting_outer, phase_offsets=False, tmax=None, fp=None, t_ref=0.0):
 
     if tmax is None:
         tmax = times.tc.max()

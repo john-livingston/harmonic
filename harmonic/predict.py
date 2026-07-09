@@ -10,7 +10,8 @@ from .plot import planet_colors, _finish, STYLE
 
 logger = logging.getLogger(__name__)
 
-trunc = lambda x: ':'.join(x.split('.')[0].split(':')[:-1])
+def trunc(x):
+    return ':'.join(x.split('.')[0].split(':')[:-1])
 
 
 def scan_transits(flatchain, ephem, nplanets, planet_letters, non_transiting_outer,
@@ -44,6 +45,8 @@ def scan_transits(flatchain, ephem, nplanets, planet_letters, non_transiting_out
         Number of chain samples to draw (default: 1000).
     seed : int
         Random seed for sampling (default: 0).
+    t_ref : float
+        Phase-pivot time passed through to the model (matches the fit's spec.t_ref).
 
     Returns
     -------

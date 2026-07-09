@@ -242,7 +242,6 @@ class Harmonic:
         fp = os.path.join(self.outdir, 'fit.png')
         plot_samples(
             self.ttv,
-            model,
             self.times,
             self.ephem,
             self.flatchain,

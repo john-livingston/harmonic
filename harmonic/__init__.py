@@ -1,7 +1,6 @@
 import logging
 import sys
 import os
-from datetime import datetime
 
 def setup_logging(console_level=logging.INFO, file_level=logging.INFO, format_string=None, log_file=None):
     """Setup logging configuration for harmonic package
@@ -49,11 +48,8 @@ def setup_logging(console_level=logging.INFO, file_level=logging.INFO, format_st
     harmonic_logger.propagate = False
     
     # Suppress verbose libraries after they're imported
-    try:
-        logging.getLogger('matplotlib').setLevel(logging.WARNING)
-        logging.getLogger('astropy').setLevel(logging.WARNING)
-    except:
-        pass  # Ignore if libraries aren't available yet
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
+    logging.getLogger('astropy').setLevel(logging.WARNING)
 
 from .exceptions import HarmonicError, ConfigurationError, DataError, PredictionError
 

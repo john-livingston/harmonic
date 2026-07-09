@@ -17,22 +17,21 @@ class TTV(object):
         self.g = g
         self.ephem = ephem
         self.nplanets = len(ephem)
-    def plot_times(self, planet, ax=None, *args, **kwargs):
+    def plot_times(self, planet, ax=None, **kwargs):
+        if ax is None:
+            raise ValueError("ax is required")
         idx = self.g.groups[planet]
         _times = self.times.loc[idx]
-        lintime = np.polyval(np.array(self.ephem.loc[planet]),_times.epoch)
+        lintime = np.polyval(np.array(self.ephem.loc[planet]), _times.epoch)
         minperday = 24*60
-        if ax is None:
-            raise ValueError("ax is required")
         ax.errorbar(_times.tc, (_times.tc - lintime)*minperday,
-                 ls='', marker='s',
-                 yerr=_times.tc_unc * minperday, *args, **kwargs)
-    def plot_model(self, planet, tc, epoch, ax=None, *args, **kwargs):
-        lintime = np.polyval(np.array(self.ephem.loc[planet]),epoch)
-        minperday = 24*60
+                    ls='', marker='s', yerr=_times.tc_unc * minperday, **kwargs)
+    def plot_model(self, planet, tc, epoch, ax=None, **kwargs):
         if ax is None:
             raise ValueError("ax is required")
-        ax.plot(tc, (tc - lintime)*minperday, *args, **kwargs)
+        lintime = np.polyval(np.array(self.ephem.loc[planet]), epoch)
+        minperday = 24*60
+        ax.plot(tc, (tc - lintime)*minperday, **kwargs)
 
 
 def _terms(planet_letters, non_transiting_outer):
