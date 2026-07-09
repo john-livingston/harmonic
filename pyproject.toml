@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "harmonic"
+description = "Multi-harmonic TTV model fitting"
+readme = "README.md"
+license = "WTFPL"
+license-files = ["LICENSE"]
+authors = [{ name = "John Livingston", email = "livingston.astro@gmail.com" }]
+keywords = ["astronomy", "exoplanets", "ttv"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Programming Language :: Python :: 3",
+]
+requires-python = ">=3.9"
+dynamic = ["version"]
+dependencies = [
+    "numpy>=1.19",
+    "pandas>=1.3",
+    "matplotlib>=3.3",
+    "astropy>=4.0",
+    "scipy>=1.7",
+    "emcee>=3.1",
+    "corner>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=6.0"]
+
+[project.urls]
+Repository = "https://github.com/john-livingston/harmonic"
+
+[project.scripts]
+harmonic = "harmonic.harmonic:cli"
+
+[tool.setuptools]
+packages = ["harmonic"]
+
+[tool.setuptools.dynamic]
+version = { attr = "harmonic.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short --strict-markers --durations=10"
+markers = [
+    "unit: Unit tests for individual functions",
+    "integration: Integration tests for workflows",
+    "slow: Tests that take longer to run",
+]
+filterwarnings = [
+    "ignore::UserWarning:astropy.*",
+    "ignore::UserWarning:matplotlib.*",
+]
