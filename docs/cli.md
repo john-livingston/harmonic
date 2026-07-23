@@ -43,6 +43,8 @@ harmonic -o results/ --predict "2023-09-17 16:00" "2023-09-17 21:30"   # predict
 | `-p`, `--predict` | none | predict transits in a window (two ISO timestamps) |
 | `--predict-list` | none | also write predicted times to this CSV |
 | `--t-offset` | 0 | offset added to get BJD (`0` for BJD data, `2454833` for BKJD) |
+| `--sigma` | median `tc_unc` per planet | assumed timing precision (days) for the information-gain ranking |
+| `--rank-by` | `total` | greedy-order criterion: `total` info gain or `ttv` (TTV parameters only) |
 | `-t`, `--tmax` | none | maximum time for the posterior TTV plot |
 
 ## Logging

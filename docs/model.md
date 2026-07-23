@@ -52,6 +52,22 @@ $$
 
 where each $\chi^2$ is evaluated at that model's maximum-likelihood fit, $k$ is its number of free parameters, and $N$ is the total number of transit times. Because the linear model is nested inside the harmonic one, the Gaussian log-likelihood constant cancels. A positive $\Delta\mathrm{BIC}$ favors the harmonic model, i.e. the TTVs are detected, and larger is stronger (roughly $>2$ positive, $>6$ strong, $>10$ very strong). The value and its ingredients are written to `fit_stats.json` and printed at the end of a fit.
 
+## Ranking future transits
+
+A prediction run also ranks each upcoming transit by its expected information gain: the reduction in posterior entropy from observing it at an assumed timing precision $\sigma$ (each planet's median measured uncertainty by default, or a global `--sigma`). Under a Gaussian approximation of the posterior with covariance $C$ (estimated from the chain), an observation with model gradient $j$ (computed analytically at the candidate transit) is a rank-one Fisher information update, and the total gain in bits is
+
+$$
+\Delta I_{\mathrm{tot}} = \tfrac{1}{2}\log_2\!\left(1 + \frac{j^{\mathsf T} C\, j}{\sigma^2}\right),
+$$
+
+where $j^{\mathsf T} C j$ is the variance of the predicted transit time: the most informative transit is the one whose predicted time is most uncertain relative to the precision it can be measured with. A second, targeted gain counts only the information reaching the TTV parameters (amplitudes, ratios, super-periods), discounting what merely re-pins the linear ephemerides:
+
+$$
+\Delta I_{\mathrm{TTV}} = \Delta I_{\mathrm{tot}} - \tfrac{1}{2}\log_2\!\left(1 + \frac{j_N^{\mathsf T} F_{NN}^{-1} j_N}{\sigma^2}\right),
+$$
+
+where $N$ is the ephemeris block $(T_0, P)$ of the information matrix $F = C^{-1}$. Because consecutive transits carry nearly duplicate information, harmonic also reports a greedy observing order: the best transit is selected, the covariance is updated as if it had been observed, and the remaining candidates are re-scored (`greedy_rank`, with `greedy_gain` the gain at selection time). The criterion driving the order is chosen with `--rank-by` (`total`, the default, or `ttv`).
+
 ## Mass constraints
 
 From the posterior, harmonic derives planet masses following Lithwick, Xie & Wu (2012). The complex TTV amplitudes of the inner and outer planet of a near-resonant pair are

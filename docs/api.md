@@ -26,6 +26,8 @@ The high-level entry point is the `Harmonic` class; the functions below are the 
 
 ::: harmonic.predict.scan_transits
 
+::: harmonic.fisher.rank_transits
+
 ::: harmonic.lithwick.print_constraints
 
 ::: harmonic.lithwick.choose_j

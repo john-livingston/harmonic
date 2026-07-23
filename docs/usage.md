@@ -24,6 +24,8 @@ Predict transits in a time window (the fit-defining options `-l` / `--phase-offs
 harmonic -o results/ --predict "2023-09-17 16:00" "2023-09-17 21:30"
 ```
 
+Predicted transits are ranked by the information gain of observing them (see [The TTV model](model.md#ranking-future-transits)); `--sigma` sets the assumed timing precision and `--rank-by` picks the criterion for the greedy observing order.
+
 See the [CLI reference](cli.md) for the full flag list.
 
 ## Python API
@@ -41,7 +43,7 @@ h.fit(walkers=100, steps=2000)      # least-squares init + emcee sampling
 h.plot_samples()                    # posterior TTV curves + residuals -> fit.png
 constraints = h.print_constraints(mstar=1.0)   # Lithwick masses (returns a DataFrame)
 dbic = h.delta_bic()               # ΔBIC vs a linear ephemeris (TTV detection metric)
-h.predict(['2023-09-17 16:00', '2023-09-17 21:30'])
+transits = h.predict(['2023-09-17 16:00', '2023-09-17 21:30'])   # returns ranked DataFrame
 ```
 
 ## Input data format

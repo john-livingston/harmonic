@@ -16,7 +16,7 @@ Transit Timing Variations occur when planets in a multi-planet system gravitatio
 
 - **MCMC Model Fitting**: Uses `emcee` for robust Bayesian parameter estimation
 - **Multi-Planet Support**: Handles complex multi-planet systems with harmonic interactions
-- **Transit Prediction**: Forecast future transit times with uncertainty estimates
+- **Transit Prediction**: Forecast future transit times with uncertainty estimates, ranked by expected information gain
 - **Visualization**: Comprehensive plotting of fits, corner plots, and trace plots
 - **CLI Interface**: Command-line tool for batch processing
 - **Python API**: Flexible programmatic interface for custom workflows
@@ -243,6 +243,8 @@ Key options:
 - `--predict-list`: Output CSV file with predicted transit times
 - `--phase-offsets`: Allow different phase offsets for each planet pair
 - `--t-offset`: Timing offset to add to get BJD (e.g. 2454833 for BKJD data)
+- `--sigma`: Assumed timing precision (days) for the information-gain ranking
+- `--rank-by`: Greedy observing-order criterion (`total` or `ttv`)
 
 For a prediction run, the fit-defining options (`-l`, `--phase-offsets`, `--non-transiting-outer`, `--t-offset`) are read back from `fit_config.json` in the output directory, so `harmonic -o <dir> --predict ...` is all you need; any conflicting flag you pass is ignored with a warning.
 - `-n, --non-transiting-outer`: Include non-transiting outer planet
