@@ -439,6 +439,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#detecting-ttvs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detecting TTVs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mass-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -599,6 +610,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#detecting-ttvs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detecting TTVs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mass-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -656,6 +678,12 @@ t_c(p, E) = t_{\mathrm{lin}}(p, E) + \sum_{\text{pairs } (i,j)\ni p} a_{p}\,\sin
 <h2 id="priors-and-fitting">Priors and fitting<a class="headerlink" href="#priors-and-fitting" title="Permanent link">&para;</a></h2>
 <p>Bounds are auto-scaled from the data per system: <span class="arithmatex">\(T_0\)</span> within <span class="arithmatex">\(\pm 0.5\)</span> d of the linear-ephemeris value, <span class="arithmatex">\(P\)</span> within <span class="arithmatex">\(\pm 1\%\)</span>, amplitudes within <span class="arithmatex">\(\pm 10\times\)</span> the largest observed <span class="arithmatex">\(|O\!-\!C|\)</span> of the pair, and the super-period log-uniform between five times the outer planet's orbital period and twenty times the data baseline.</p>
 <p>Fitting proceeds in two stages: a bounded <code>scipy.optimize.least_squares</code> (TRF) fit with an analytic Jacobian and a phase/sign multi-start finds the optimum, then <code>emcee</code> samples the posterior, initialized in a small ball around it. Everything is seeded (<code>--seed</code>, default 42) for reproducibility.</p>
+<h2 id="detecting-ttvs">Detecting TTVs<a class="headerlink" href="#detecting-ttvs" title="Permanent link">&para;</a></h2>
+<p>To quantify whether the TTVs are detected at all, as a single number for the whole system rather than per planet, harmonic compares the best-fit harmonic model against the linear-ephemeris null (each planet strictly periodic, i.e. all TTV amplitudes zero) with the Bayesian Information Criterion:</p>
+<div class="arithmatex">\[
+\Delta\mathrm{BIC} = \left(\chi^2_{\mathrm{lin}} - \chi^2_{\mathrm{harm}}\right) - \left(k_{\mathrm{harm}} - k_{\mathrm{lin}}\right)\ln N,
+\]</div>
+<p>where each <span class="arithmatex">\(\chi^2\)</span> is evaluated at that model's maximum-likelihood fit, <span class="arithmatex">\(k\)</span> is its number of free parameters, and <span class="arithmatex">\(N\)</span> is the total number of transit times. Because the linear model is nested inside the harmonic one, the Gaussian log-likelihood constant cancels. A positive <span class="arithmatex">\(\Delta\mathrm{BIC}\)</span> favors the harmonic model, i.e. the TTVs are detected, and larger is stronger (roughly <span class="arithmatex">\(&gt;2\)</span> positive, <span class="arithmatex">\(&gt;6\)</span> strong, <span class="arithmatex">\(&gt;10\)</span> very strong). The value and its ingredients are written to <code>fit_stats.json</code> and printed at the end of a fit.</p>
 <h2 id="mass-constraints">Mass constraints<a class="headerlink" href="#mass-constraints" title="Permanent link">&para;</a></h2>
 <p>From the posterior, harmonic derives planet masses following Lithwick, Xie &amp; Wu (2012). The complex TTV amplitudes of the inner and outer planet of a near-resonant pair are</p>
 <div class="arithmatex">\[

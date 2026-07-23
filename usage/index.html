@@ -644,7 +644,8 @@
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">h</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">walkers</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>      <span class="c1"># least-squares init + emcee sampling</span>
 <a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">h</span><span class="o">.</span><span class="n">plot_samples</span><span class="p">()</span>                    <span class="c1"># posterior TTV curves + residuals -&gt; fit.png</span>
 <a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="n">constraints</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">print_constraints</span><span class="p">(</span><span class="n">mstar</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>   <span class="c1"># Lithwick masses (returns a DataFrame)</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="n">h</span><span class="o">.</span><span class="n">predict</span><span class="p">([</span><span class="s1">&#39;2023-09-17 16:00&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-09-17 21:30&#39;</span><span class="p">])</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="n">dbic</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">delta_bic</span><span class="p">()</span>               <span class="c1"># ΔBIC vs a linear ephemeris (TTV detection metric)</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="n">h</span><span class="o">.</span><span class="n">predict</span><span class="p">([</span><span class="s1">&#39;2023-09-17 16:00&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-09-17 21:30&#39;</span><span class="p">])</span>
 </code></pre></div>
 <h2 id="input-data-format">Input data format<a class="headerlink" href="#input-data-format" title="Permanent link">&para;</a></h2>
 <p>A CSV of transit times, one row per observed transit:</p>
@@ -682,6 +683,7 @@
 <ul>
 <li><code>samples.csv.gz</code> — MCMC chain samples</li>
 <li><code>fit_config.json</code> — fit-defining options (recovered automatically by <code>--predict</code>)</li>
+<li><code>fit_stats.json</code> — system-wide ΔBIC (harmonic vs. linear ephemeris) + MCMC diagnostics</li>
 <li><code>args.txt</code> — the exact command used</li>
 <li><code>fit.png</code>, <code>init.png</code> — posterior TTV curves and the initial best fit</li>
 <li><code>corner.png</code>, <code>trace.png</code> — posterior corner and trace plots</li>

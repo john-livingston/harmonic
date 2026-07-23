@@ -470,6 +470,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#harmonic.Harmonic.delta_bic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delta_bic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#harmonic.Harmonic.fit" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -679,6 +690,17 @@
     <span class="md-ellipsis">
       
         optimize
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#harmonic.fit.delta_bic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delta_bic
       
     </span>
   </a>
@@ -909,6 +931,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#harmonic.Harmonic.delta_bic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delta_bic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#harmonic.Harmonic.fit" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1118,6 +1151,17 @@
     <span class="md-ellipsis">
       
         optimize
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#harmonic.fit.delta_bic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delta_bic
       
     </span>
   </a>
@@ -1360,6 +1404,28 @@ non_transiting_outer : bool, optional
     Include non-transiting outer planet (default: False)
 phase_offsets : bool, optional
     Allow different phase offsets for each planet in a pair (default: False)</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="harmonic.Harmonic.delta_bic" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">delta_bic</span><span class="p">()</span></code>
+
+<a href="#harmonic.Harmonic.delta_bic" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Whole-system ΔBIC of the best-fit harmonic model vs. a linear
+ephemeris; positive favors the harmonic model (TTVs detected). Returns
+the ΔBIC dict (delta_bic, evidence, chi2_lin, chi2_harm, k_lin, k_harm,
+n_data), taken from the just-run fit or fit_stats.json when available and
+otherwise recomputed from the least-squares MLE. Logs a one-line summary.</p>
 
 
     </div>
@@ -1673,6 +1739,33 @@ seed : int, optional
 
 
     <div class="doc doc-contents first">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="harmonic.fit.delta_bic" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">harmonic</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="n">delta_bic</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">planet</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">tc</span><span class="p">,</span> <span class="n">tc_err</span><span class="p">,</span> <span class="n">planet_letters</span><span class="p">,</span> <span class="n">non_transiting_outer</span><span class="p">,</span> <span class="n">phase_offsets</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span></code>
+
+<a href="#harmonic.fit.delta_bic" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Whole-system BIC difference between the best-fit harmonic model and a
+linear ephemeris (the harmonic model with all TTV amplitudes = 0, a nested
+null):</p>
+<div class="highlight"><pre><span></span><code>ΔBIC = (chi2_lin - chi2_harm) - (k_harm - k_lin) * ln(N)
+</code></pre></div>
+<p>Positive favors the harmonic model, i.e. the TTVs are detected. <code>theta</code> is
+the harmonic maximum-likelihood parameter vector (the least_squares
+optimum, e.g. run_fit's diag['x_opt']). The Gaussian log-likelihood
+constant is identical for both models and cancels. Returns a dict with the
+value, its evidence label, and the ingredients.</p>
 
 
     </div>
