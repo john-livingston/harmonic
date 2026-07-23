@@ -18,6 +18,28 @@ def _chain(n=4000, seed=0):
     return pd.DataFrame({k: BASE[k] + rng.normal(0, SPREAD[k], n) for k in NAMES})
 
 
+# Physically motivated correlation structure (real chains look like this):
+# t0-per anticorrelation within a planet, as/ac and r/amp degeneracies,
+# super-period coupling to the amplitudes. Modest values keep it PD.
+_CORR = {('t0_b', 'per_b'): -0.6, ('t0_c', 'per_c'): -0.6,
+         ('as_bc', 'ac_bc'): 0.4, ('r_cb', 'as_bc'): -0.3,
+         ('per_bc', 'ac_bc'): 0.3, ('t0_b', 'as_bc'): 0.2}
+
+
+def _chain_corr(n=4000, seed=0):
+    k = len(NAMES)
+    R = np.eye(k)
+    idx = {nm: i for i, nm in enumerate(NAMES)}
+    for (a, b), rho in _CORR.items():
+        R[idx[a], idx[b]] = R[idx[b], idx[a]] = rho
+    assert np.linalg.eigvalsh(R).min() > 0
+    s = np.array([SPREAD[nm] for nm in NAMES])
+    cov = R * np.outer(s, s)
+    rng = np.random.default_rng(seed)
+    X = rng.multivariate_normal([BASE[nm] for nm in NAMES], cov, size=n)
+    return pd.DataFrame(X, columns=NAMES)
+
+
 def _tdf(rows):
     return pd.DataFrame(rows, columns=['planet', 'epoch'])
 
@@ -131,7 +153,7 @@ def test_laplace_variance_matches_sampled_prediction_variance():
     # jT C j is the Laplace prediction variance; on an exactly Gaussian chain
     # it must match the MC variance of the model prediction (validates the
     # "observe where the prediction is most uncertain" equivalence)
-    fc = _chain(n=8000, seed=7)
+    fc = _chain_corr(n=8000, seed=7)
     names = NAMES
     C = np.cov(fc[names].to_numpy(float), rowvar=False)
     med = {k: float(fc[k].median()) for k in names}
@@ -150,7 +172,7 @@ def test_rank_follows_prediction_uncertainty():
     # prediction variances (ground truth from the chain, no Laplace), and
     # later epochs of the same planet (larger accumulated ephemeris drift)
     # must outrank earlier ones
-    fc = _chain()
+    fc = _chain_corr()
     tdf = _tdf([{'planet': 'b', 'epoch': 20}, {'planet': 'b', 'epoch': 60},
                 {'planet': 'b', 'epoch': 120}, {'planet': 'c', 'epoch': 40}])
     out = rank_transits(fc, NAMES, tdf, 'bc', False, False,
