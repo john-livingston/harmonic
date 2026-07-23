@@ -154,3 +154,62 @@ def test_delta_bic_uses_stored_stats(tmp_path):
                     'chi2_harm': 0.5, 'k_lin': 6, 'k_harm': 14, 'n_data': 40}
     d = h.delta_bic()
     assert d['delta_bic'] == 99.0  # returned from stored stats, no recompute
+
+
+def _predict_harmonic(tmp_path, sigma=None, rank_by='total', output_list=None):
+    # real kep51 inputs + a synthetic-but-valid chain (predict never re-fits)
+    import numpy as np
+    from harmonic.harmonic import Harmonic
+    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    rng = np.random.default_rng(0)
+    x0 = h.spec.x0 + h.spec.offset
+    width = 1e-4 * (h.spec.hi - h.spec.lo)
+    fc = pd.DataFrame(rng.normal(x0, width, size=(400, len(h.spec))), columns=h.spec.names)
+    h.flatchain = fc
+    h._chain_mismatch = None
+    # 90-day window: guarantees at least one transit each of b (45.155 d)
+    # and c (85.32 d), so len(df) > 1 always holds
+    return h.predict(['2017-05-01 00:00', '2017-07-30 00:00'],
+                     sigma=sigma, rank_by=rank_by, output_list=output_list)
+
+
+def test_predict_returns_ranked_dataframe(tmp_path):
+    df = _predict_harmonic(tmp_path)
+    assert df is not None and len(df) > 1
+    for c in ('sigma', 'gain_total', 'gain_ttv', 'greedy_rank', 'greedy_gain'):
+        assert c in df.columns
+    assert sorted(df.greedy_rank) == list(range(1, len(df) + 1))
+    assert (df.gain_total >= df.gain_ttv - 1e-12).all() and (df.gain_ttv >= 0).all()
+    # default sigma: per-planet median tc_unc from the fitted data
+    import pandas as _pd
+    times = _pd.read_csv('examples/kep51.csv', comment='#')
+    letters = {0: 'b', 1: 'c', 2: 'd'}
+    for pl, g in df.groupby('planet'):
+        pid = [k for k, v in letters.items() if v == pl][0]
+        expect = times[times.planet == pid].tc_unc.median()
+        assert abs(g.sigma.iloc[0] - expect) < 1e-12
+
+
+def test_predict_sigma_override_and_validation(tmp_path):
+    df = _predict_harmonic(tmp_path, sigma=0.001)
+    assert (df.sigma == 0.001).all()
+    from harmonic.exceptions import PredictionError
+    with pytest.raises(PredictionError):
+        _predict_harmonic(tmp_path, sigma=-1.0)
+
+
+def test_predict_list_carries_ranking_columns(tmp_path):
+    out_csv = tmp_path / 'transits.csv'
+    _predict_harmonic(tmp_path, output_list=str(out_csv))
+    got = pd.read_csv(out_csv)
+    for c in ('sigma', 'gain_total', 'gain_ttv', 'greedy_rank', 'greedy_gain'):
+        assert c in got.columns
+
+
+def test_cli_ranking_flags_defaults():
+    from harmonic.harmonic import _build_parser
+    args = _build_parser().parse_args(['-o', 'x', '--predict', 'a', 'b'])
+    assert args.sigma is None and args.rank_by == 'total'
+    args = _build_parser().parse_args(
+        ['-o', 'x', '--predict', 'a', 'b', '--sigma', '0.002', '--rank-by', 'ttv'])
+    assert args.sigma == 0.002 and args.rank_by == 'ttv'

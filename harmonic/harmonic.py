@@ -313,9 +313,10 @@ class Harmonic:
         return delta_bic(self.spec, planet, epoch, tc, tc_err, self.planet_letters,
                          self.non_transiting_outer, self.phase_offsets, res.x)
 
-    def predict(self, window, t_offset=0, output_list=None):
+    def predict(self, window, t_offset=0, output_list=None, sigma=None, rank_by='total'):
         """
-        Predict transit times within a specified time window.
+        Predict transit times within a specified time window and rank them by
+        the information gain of observing them.
 
         Parameters
         ----------
@@ -326,8 +327,21 @@ class Harmonic:
             use 2454833 for BKJD data)
         output_list : str, optional
             Path to output CSV file with transit list (default: None, no file output)
+        sigma : float, optional
+            Assumed timing precision (days) of the future observations for the
+            information-gain ranking (default: None, each planet's median tc_unc)
+        rank_by : str, optional
+            Criterion driving the greedy observing order: 'total' or 'ttv'
+            (default: 'total')
+
+        Returns
+        -------
+        DataFrame
+            Predicted transits with information-gain columns (sigma,
+            gain_total, gain_ttv, greedy_rank, greedy_gain).
         """
-        from .predict import plot_prediction, scan_transits
+        from .predict import plot_prediction, scan_transits, trunc
+        from .fisher import rank_transits
 
         config = self.config
         outdir = self.outdir
@@ -336,6 +350,9 @@ class Harmonic:
         from .exceptions import ConfigurationError, PredictionError
 
         self._require_chain()
+
+        if sigma is not None and sigma <= 0:
+            raise PredictionError("--sigma must be positive")
 
         if 'T14' not in config:
             raise ConfigurationError("transit duration section [T14] missing from configuration")
@@ -376,6 +393,25 @@ class Harmonic:
             t_ref=self.spec.t_ref
         )
 
+        letters_ = self.planet_letters[:-1] if self.non_transiting_outer else self.planet_letters
+        sigmas = {p: (sigma if sigma is not None
+                      else float(self.times[self.times.planet == p].tc_unc.median()))
+                  for p in letters_}
+        transit_df = rank_transits(self.flatchain, self.spec.names, transit_df,
+                                   self.planet_letters, self.non_transiting_outer,
+                                   self.phase_offsets, sigmas, self.spec.t_ref,
+                                   rank_by=rank_by)
+        if len(transit_df):
+            top = transit_df.sort_values('greedy_rank').head(10)
+            logger.info("Information-gain ranking (rank_by=%s, gains in bits):", rank_by)
+            logger.info("%-3s %-6s %-17s %10s %8s %11s %5s",
+                        'pl', 'epoch', 'tc (UTC)', 'gain_total', 'gain_ttv',
+                        'greedy_gain', 'rank')
+            for _, r in top.iterrows():
+                logger.info("%-3s %-6d %-17s %10.2f %8.2f %11.2f %5d",
+                            r.planet, int(r.epoch), trunc(r.tc_iso), r.gain_total,
+                            r.gain_ttv, r.greedy_gain, int(r.greedy_rank))
+
         fp = os.path.join(outdir, f'predict-{timestamp}.png')
         plot_prediction(
             transit_df,
@@ -392,6 +428,8 @@ class Harmonic:
             transit_df.to_csv(output_list, index=False, float_format='%.5f')
             logger.info("Created transit list: %s", output_list)
             logger.info("Found %d transits", len(transit_df))
+
+        return transit_df
 
 def _build_parser():
     import argparse
@@ -417,6 +455,12 @@ def _build_parser():
         )
     parser.add_argument('--predict-list', help='Output CSV file with predicted transit times', type=str, default=None)
     parser.add_argument('--t-offset', help='Timing offset to add to get BJD (0 for BJD data, 2454833 for BKJD data)', type=float, default=0)
+    parser.add_argument('--sigma', type=float, default=None,
+        help="Assumed timing precision (days) of future observations for the "
+             "information-gain ranking (default: each planet's median tc_unc)")
+    parser.add_argument('--rank-by', choices=['total', 'ttv'], default='total',
+        help='Criterion for the greedy observing order: total information gain '
+             'or TTV-parameters-only')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output (debug level)')
     parser.add_argument('-q', '--quiet', action='store_true', help='Minimal output (warnings only)')
     return parser
@@ -593,7 +637,8 @@ def cli():
             harmonic = Harmonic(letters=opts['letters'], outdir=outdir,
                                 non_transiting_outer=opts['non_transiting_outer'],
                                 phase_offsets=opts['phase_offsets'])
-            harmonic.predict(args.predict, opts['t_offset'], output_list=args.predict_list)
+            harmonic.predict(args.predict, opts['t_offset'], output_list=args.predict_list,
+                             sigma=args.sigma, rank_by=args.rank_by)
             logger.info("Transit prediction completed successfully")
 
         logger.debug("Script executed in %.1f seconds", time.time() - tick)
