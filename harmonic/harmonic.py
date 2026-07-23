@@ -405,7 +405,7 @@ class Harmonic:
             top = transit_df.sort_values('greedy_rank').head(10)
             logger.info("Information-gain ranking (rank_by=%s, gains in bits):", rank_by)
             logger.info("%-3s %-6s %-17s %10s %8s %11s %5s",
-                        'pl', 'epoch', 'tc (UTC)', 'gain_total', 'gain_ttv',
+                        'pl', 'epoch', 'tc (ISO)', 'gain_total', 'gain_ttv',
                         'greedy_gain', 'rank')
             for _, r in top.iterrows():
                 logger.info("%-3s %-6d %-17s %10.2f %8.2f %11.2f %5d",

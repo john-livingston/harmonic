@@ -89,7 +89,7 @@ def rank_transits(flatchain, names, transit_df, planet_letters,
     out = transit_df.copy()
     if len(out) == 0:
         for c in _RANK_COLS:
-            out[c] = pd.Series(dtype=float)
+            out[c] = pd.Series(dtype=int if c == 'greedy_rank' else float)
         return out
 
     X = flatchain[list(names)].to_numpy(float)
