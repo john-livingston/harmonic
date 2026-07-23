@@ -101,6 +101,8 @@ harmonic -i examples/kep51-extended.csv -c examples/kep51-extended.ini -o kep51-
 
 The non-transiting planet is constrained purely by the gravitational perturbation it imprints on the transit times of the inner three — the same principle that lets `harmonic` weigh unseen companions from timing data alone. See Masuda et al. (2024), [arXiv:2410.01625](https://arxiv.org/abs/2410.01625).
 
+Each fit also reports a single system-wide ΔBIC comparing the harmonic model to a plain linear ephemeris (written to `fit_stats.json`): a positive value favors the harmonic model and quantifies how decisively the TTVs are detected across the whole system.
+
 ## Input Data Format
 
 ### Transit Times CSV
@@ -148,6 +150,7 @@ The package generates several output files in the specified directory:
 
 - `samples.csv.gz`: MCMC chain samples
 - `fit_config.json`: fit-defining options (recovered automatically by `--predict`)
+- `fit_stats.json`: system-wide ΔBIC (harmonic vs. linear ephemeris) plus MCMC diagnostics
 - `args.txt`: the exact command used for the fit
 - `corner.png`: Corner plot of posterior distributions
 - `trace.png`: MCMC trace plots

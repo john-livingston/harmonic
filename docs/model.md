@@ -42,6 +42,16 @@ Bounds are auto-scaled from the data per system: $T_0$ within $\pm 0.5$ d of the
 
 Fitting proceeds in two stages: a bounded `scipy.optimize.least_squares` (TRF) fit with an analytic Jacobian and a phase/sign multi-start finds the optimum, then `emcee` samples the posterior, initialized in a small ball around it. Everything is seeded (`--seed`, default 42) for reproducibility.
 
+## Detecting TTVs
+
+To quantify whether the TTVs are detected at all, as a single number for the whole system rather than per planet, harmonic compares the best-fit harmonic model against the linear-ephemeris null (each planet strictly periodic, i.e. all TTV amplitudes zero) with the Bayesian Information Criterion:
+
+$$
+\Delta\mathrm{BIC} = \left(\chi^2_{\mathrm{lin}} - \chi^2_{\mathrm{harm}}\right) - \left(k_{\mathrm{harm}} - k_{\mathrm{lin}}\right)\ln N,
+$$
+
+where each $\chi^2$ is evaluated at that model's maximum-likelihood fit, $k$ is its number of free parameters, and $N$ is the total number of transit times. Because the linear model is nested inside the harmonic one, the Gaussian log-likelihood constant cancels. A positive $\Delta\mathrm{BIC}$ favors the harmonic model, i.e. the TTVs are detected, and larger is stronger (roughly $>2$ positive, $>6$ strong, $>10$ very strong). The value and its ingredients are written to `fit_stats.json` and printed at the end of a fit.
+
 ## Mass constraints
 
 From the posterior, harmonic derives planet masses following Lithwick, Xie & Wu (2012). The complex TTV amplitudes of the inner and outer planet of a near-resonant pair are

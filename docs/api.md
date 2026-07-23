@@ -22,6 +22,8 @@ The high-level entry point is the `Harmonic` class; the functions below are the 
 
 ::: harmonic.fit.optimize
 
+::: harmonic.fit.delta_bic
+
 ::: harmonic.predict.scan_transits
 
 ::: harmonic.lithwick.print_constraints

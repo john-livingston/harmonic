@@ -40,6 +40,7 @@ h = Harmonic(
 h.fit(walkers=100, steps=2000)      # least-squares init + emcee sampling
 h.plot_samples()                    # posterior TTV curves + residuals -> fit.png
 constraints = h.print_constraints(mstar=1.0)   # Lithwick masses (returns a DataFrame)
+dbic = h.delta_bic()               # ΔBIC vs a linear ephemeris (TTV detection metric)
 h.predict(['2023-09-17 16:00', '2023-09-17 21:30'])
 ```
 
@@ -89,6 +90,7 @@ Written to the `-o` directory:
 
 - `samples.csv.gz` — MCMC chain samples
 - `fit_config.json` — fit-defining options (recovered automatically by `--predict`)
+- `fit_stats.json` — system-wide ΔBIC (harmonic vs. linear ephemeris) + MCMC diagnostics
 - `args.txt` — the exact command used
 - `fit.png`, `init.png` — posterior TTV curves and the initial best fit
 - `corner.png`, `trace.png` — posterior corner and trace plots
