@@ -102,6 +102,89 @@ def test_optimize_recovers_truth_bjd_frame():
     assert chisq / len(tc) < 2.0
 
 
+def test_linear_chi2_matches_weighted_polyfit():
+    from harmonic.fit import _linear_chi2
+    planet = np.array(['b']*5 + ['c']*4)
+    epoch = np.array([0, 1, 2, 3, 4, 0, 1, 2, 3], dtype=float)
+    rng = np.random.default_rng(0)
+    tc = np.concatenate([100 + 45.0*np.arange(5), 200 + 80.0*np.arange(4)]) + rng.normal(0, 0.01, 9)
+    err = np.array([0.005, 0.02, 0.01, 0.03, 0.008, 0.015, 0.006, 0.025, 0.012])
+    chi2, k = _linear_chi2(planet, epoch, tc, err, 'bc')
+    expect = 0.0
+    for sl in (slice(0, 5), slice(5, 9)):
+        coef = np.polyfit(epoch[sl], tc[sl], 1, w=1.0/err[sl])
+        expect += np.sum(((tc[sl] - np.polyval(coef, epoch[sl]))/err[sl])**2)
+    assert k == 4
+    assert abs(chi2 - expect) < 1e-9
+
+
+def test_linear_chi2_excludes_non_transiting_outer():
+    # data for b,c only; with a non-transiting outer the transiting set is 'bc'
+    from harmonic.fit import _linear_chi2
+    planet = np.array(['b']*4 + ['c']*4)
+    epoch = np.array([0, 1, 2, 3]*2, dtype=float)
+    tc = np.concatenate([100 + 45.0*np.arange(4), 200 + 80.0*np.arange(4)])
+    err = np.full(8, 0.01)
+    _, k = _linear_chi2(planet, epoch, tc, err, 'bc')  # 'bc' = transiting letters, outer excluded
+    assert k == 4
+
+
+def test_bic_evidence_labels():
+    from harmonic.fit import _bic_evidence
+    assert _bic_evidence(-5.0) == 'linear favored (no TTV detection)'
+    assert _bic_evidence(1.0) == 'inconclusive'
+    assert _bic_evidence(3.0) == 'positive'
+    assert _bic_evidence(8.0) == 'strong'
+    assert _bic_evidence(50.0) == 'very strong'
+    assert _bic_evidence(0.0) == 'inconclusive'
+    assert _bic_evidence(2.0) == 'positive'
+    assert _bic_evidence(6.0) == 'strong'
+    assert _bic_evidence(10.0) == 'very strong'
+
+
+def test_delta_bic_formula(synth):
+    from harmonic.fit import delta_bic, _linear_chi2
+    from harmonic.model import residual
+    spec, planet, epoch, tc, err = synth
+    res = optimize(spec, planet, epoch, tc, err, 'bc', False, False)
+    d = delta_bic(spec, planet, epoch, tc, err, 'bc', False, False, res.x)
+    r = residual(spec.to_dict(res.x), planet, epoch, tc, err, 'bc', False, False, t_ref=spec.t_ref)
+    chi2_harm = np.sum(r**2)
+    chi2_lin, k_lin = _linear_chi2(planet, epoch, tc, err, 'bc')
+    expect = (chi2_lin - chi2_harm) - (len(spec) - k_lin) * np.log(len(tc))
+    assert d['k_lin'] == 4 and d['k_harm'] == len(spec) and d['n_data'] == len(tc)
+    assert abs(d['delta_bic'] - expect) < 1e-9
+
+
+def test_delta_bic_detects_strong_ttv(synth):
+    # _make_synth carries real 0.01 d TTVs at sigma 0.0015 -> decisive detection
+    from harmonic.fit import delta_bic
+    spec, planet, epoch, tc, err = synth
+    res = optimize(spec, planet, epoch, tc, err, 'bc', False, False)
+    d = delta_bic(spec, planet, epoch, tc, err, 'bc', False, False, res.x)
+    assert d['delta_bic'] > 50
+    assert d['evidence'] == 'very strong'
+
+
+def test_delta_bic_negative_when_no_ttv():
+    # pure linear data + noise: the harmonic model cannot beat the linear null by
+    # enough to pay its extra-parameter penalty -> ΔBIC < 0
+    from harmonic.fit import delta_bic
+    rng = np.random.default_rng(7)
+    planet = np.array(['b']*30 + ['c']*16)
+    epoch = np.array(list(range(30)) + list(range(16)), dtype=float)
+    sigma = 0.0015
+    tc = np.where(planet == 'b', 100.0 + 45.155*epoch, 110.0 + 85.32*epoch) + rng.normal(0, sigma, len(epoch))
+    err = np.full(len(tc), sigma)
+    times = pd.DataFrame(dict(planet=planet, epoch=epoch, tc=tc, tc_unc=err))
+    ephem = pd.DataFrame({'per': [45.155, 85.32], 'tc': [100.0, 110.0]}, index=['b', 'c'])
+    p_init = {'a_bc': 0.001, 'a_cb': -0.001, 'per_bc': 650.0, 't_bc': 200.0}
+    spec = build_spec(p_init, ephem, times, 'bc')
+    res = optimize(spec, planet, epoch, tc, err, 'bc', False, False)
+    d = delta_bic(spec, planet, epoch, tc, err, 'bc', False, False, res.x)
+    assert d['delta_bic'] < 0
+
+
 def test_chain_columns_absolute_in_bjd_frame():
     spec, planet, epoch, tc, err = _make_synth(shift=2454833.0)
     fc, chain, diag = run_fit(spec, planet, epoch, tc, err, 'bc', False, False,

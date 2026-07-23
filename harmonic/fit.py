@@ -182,3 +182,63 @@ def run_fit(spec, planet, epoch, tc, tc_err, planet_letters,
     fc = pd.DataFrame(flat + spec.offset, columns=spec.names)  # chain in absolute time
     _check_ratio_pileup(fc, spec)
     return fc, chain, dict(accept_frac=accept, tau_max=tau_max, converged=converged, x_opt=res.x)
+
+
+# ---- model comparison: whole-system TTV detection via delta-BIC ----
+
+_BIC_LEVELS = ((10.0, 'very strong'), (6.0, 'strong'), (2.0, 'positive'), (0.0, 'inconclusive'))
+
+
+def _bic_evidence(dbic):
+    """Kass and Raftery evidence label for a ΔBIC favoring the harmonic model."""
+    if dbic < 0:
+        return 'linear favored (no TTV detection)'
+    for thresh, label in _BIC_LEVELS:
+        if dbic >= thresh:
+            return label
+    return 'inconclusive'
+
+
+def _linear_chi2(planet, epoch, tc, tc_err, transiting):
+    """chi-square and free-parameter count of the linear-ephemeris null: each
+    transiting planet fit by its own inverse-variance-weighted straight line
+    (period + reference time). Returns (chi2, k) with k = 2 per fitted planet;
+    a planet with no rows (e.g. a non-transiting outer) is skipped."""
+    planet = np.asarray(planet)
+    epoch = np.asarray(epoch, dtype=float)
+    chi2, k = 0.0, 0
+    for pl in transiting:
+        m = planet == pl
+        if not m.any():
+            continue
+        coef = np.polyfit(epoch[m], tc[m], 1, w=1.0 / tc_err[m])
+        r = (tc[m] - np.polyval(coef, epoch[m])) / tc_err[m]
+        chi2 += float(np.sum(r**2))
+        k += 2
+    return chi2, k
+
+
+def delta_bic(spec, planet, epoch, tc, tc_err, planet_letters,
+              non_transiting_outer, phase_offsets, theta):
+    """Whole-system BIC difference between the best-fit harmonic model and a
+    linear ephemeris (the harmonic model with all TTV amplitudes = 0, a nested
+    null):
+
+        ΔBIC = (chi2_lin - chi2_harm) - (k_harm - k_lin) * ln(N)
+
+    Positive favors the harmonic model, i.e. the TTVs are detected. `theta` is
+    the harmonic maximum-likelihood parameter vector (the least_squares
+    optimum, e.g. run_fit's diag['x_opt']). The Gaussian log-likelihood
+    constant is identical for both models and cancels. Returns a dict with the
+    value, its evidence label, and the ingredients."""
+    r = residual(spec.to_dict(theta), planet, epoch, tc, tc_err,
+                 planet_letters, non_transiting_outer, phase_offsets, t_ref=spec.t_ref)
+    chi2_harm = float(np.sum(r**2))
+    transiting = planet_letters[:-1] if non_transiting_outer else planet_letters
+    chi2_lin, k_lin = _linear_chi2(planet, epoch, tc, tc_err, transiting)
+    k_harm = len(spec)
+    n = len(tc)
+    dbic = (chi2_lin - chi2_harm) - (k_harm - k_lin) * np.log(n)
+    return dict(delta_bic=float(dbic), evidence=_bic_evidence(dbic),
+                chi2_lin=chi2_lin, chi2_harm=chi2_harm,
+                k_lin=int(k_lin), k_harm=int(k_harm), n_data=int(n))
