@@ -21,6 +21,12 @@ def test_kep51_fit_smoke(tmp_path):
         assert (tmp_path / f).exists(), f
     fc = pd.read_csv(tmp_path / 'samples.csv.gz')
     assert len(fc) > 0 and any(c.startswith('as_') for c in fc.columns)
+    assert (tmp_path / 'fit_stats.json').exists()
+    import json
+    stats = json.loads((tmp_path / 'fit_stats.json').read_text())
+    assert set(stats) >= {'delta_bic', 'evidence', 'chi2_lin', 'chi2_harm',
+                          'k_lin', 'k_harm', 'n_data', 'reduced_chi2', 'dof',
+                          'accept_frac', 'tau_max', 'converged'}
 
 def test_missing_t14_predict_errors(tmp_path, sample_data_file):
     import shutil
@@ -101,3 +107,50 @@ def test_resolve_predict_options_fallback_no_config(tmp_path):
     args = parser.parse_args(['-o', str(tmp_path), '-l', 'bcde', '--predict', 'a', 'b'])
     opts = _resolve_predict_options(args, parser)
     assert opts['letters'] == 'bcde'  # no fit config -> CLI value
+
+
+def test_fit_stats_round_trip(tmp_path):
+    from harmonic.harmonic import _write_fit_stats, _read_fit_stats
+    stats = {'delta_bic': 152.34, 'evidence': 'very strong', 'chi2_lin': 286.1,
+             'chi2_harm': 133.8, 'k_lin': 6, 'k_harm': 14, 'n_data': 45,
+             'reduced_chi2': 4.32, 'dof': 31, 'accept_frac': 0.42,
+             'tau_max': 38.6, 'converged': True}
+    _write_fit_stats(str(tmp_path), stats)
+    assert (tmp_path / 'fit_stats.json').exists()
+    assert _read_fit_stats(str(tmp_path)) == {
+        'delta_bic': 152.34, 'evidence': 'very strong', 'chi2_lin': 286.1,
+        'chi2_harm': 133.8, 'k_lin': 6, 'k_harm': 14, 'n_data': 45}
+
+
+def test_read_fit_stats_none_when_missing_or_incomplete(tmp_path):
+    from harmonic.harmonic import _read_fit_stats
+    assert _read_fit_stats(str(tmp_path)) is None
+    (tmp_path / 'fit_stats.json').write_text('{"delta_bic": 1.0}')  # missing keys
+    assert _read_fit_stats(str(tmp_path)) is None
+
+
+def test_delta_bic_recompute_when_no_stats(tmp_path):
+    # no fit_stats.json and no stored stats -> method re-optimizes for the MLE.
+    # A one-row chain with the right columns satisfies _require_chain; the
+    # recompute path ignores the chain contents.
+    from harmonic.harmonic import Harmonic
+    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    h.flatchain = pd.DataFrame({n: [0.0] for n in h.spec.names})
+    h._chain_mismatch = None
+    h._fit_stats = None
+    d = h.delta_bic()
+    assert set(d) == {'delta_bic', 'evidence', 'chi2_lin', 'chi2_harm',
+                      'k_lin', 'k_harm', 'n_data'}
+    assert d['k_lin'] == 6 and d['k_harm'] == len(h.spec)
+    assert d['delta_bic'] > 0  # kep51 has strong, well-detected TTVs
+
+
+def test_delta_bic_uses_stored_stats(tmp_path):
+    from harmonic.harmonic import Harmonic
+    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    h.flatchain = pd.DataFrame({n: [0.0] for n in h.spec.names})
+    h._chain_mismatch = None
+    h._fit_stats = {'delta_bic': 99.0, 'evidence': 'very strong', 'chi2_lin': 1.0,
+                    'chi2_harm': 0.5, 'k_lin': 6, 'k_harm': 14, 'n_data': 40}
+    d = h.delta_bic()
+    assert d['delta_bic'] == 99.0  # returned from stored stats, no recompute

@@ -150,6 +150,7 @@ class Harmonic:
         self.epochi = epochi
         self.planeti = planeti
         self.spec = spec
+        self._fit_stats = None
 
     def _require_chain(self):
         from .exceptions import PredictionError
@@ -208,7 +209,7 @@ class Harmonic:
             tc = np.array(times.tc)
             tc_err = np.array(times.tc_unc)
 
-            from .fit import run_fit
+            from .fit import run_fit, delta_bic
             from .params import derived_frame
             fc, chain, diag = run_fit(self.spec, planet, epoch, tc, tc_err,
                                       planet_letters, non_transiting_outer,
@@ -224,6 +225,14 @@ class Harmonic:
             dv = derived_frame(fc, planet_letters, non_transiting_outer, phase_offsets)
             for col in dv.columns:
                 logger.info("%s = %.5f +/- %.5f", col, dv[col].median(), dv[col].std())
+            stats = delta_bic(self.spec, planet, epoch, tc, tc_err, planet_letters,
+                              non_transiting_outer, phase_offsets, diag['x_opt'])
+            dof = max(len(tc) - stats['k_harm'], 1)
+            stats.update(reduced_chi2=stats['chi2_harm'] / dof, dof=int(dof),
+                         accept_frac=diag['accept_frac'], tau_max=diag['tau_max'],
+                         converged=diag['converged'])
+            _write_fit_stats(outdir, stats)
+            self._fit_stats = stats
             self.flatchain = fc
             self._chain_mismatch = None
 
@@ -272,6 +281,37 @@ class Harmonic:
             phase_offsets=self.phase_offsets,
             ephem=self.ephem,
             seed=seed)
+
+    def delta_bic(self):
+        """Whole-system ΔBIC of the best-fit harmonic model vs. a linear
+        ephemeris; positive favors the harmonic model (TTVs detected). Returns
+        the ΔBIC dict (delta_bic, evidence, chi2_lin, chi2_harm, k_lin, k_harm,
+        n_data), taken from the just-run fit or fit_stats.json when available and
+        otherwise recomputed from the least-squares MLE. Logs a one-line summary.
+        """
+        self._require_chain()
+        stats = self._fit_stats or _read_fit_stats(self.outdir)
+        if stats is not None:
+            result = {k: stats[k] for k in _DBIC_KEYS}
+        else:
+            result = self._compute_delta_bic()
+        logger.info("ΔBIC = %.2f (χ² %.1f→%.1f, Δk=%d, N=%d): %s",
+                    result['delta_bic'], result['chi2_lin'], result['chi2_harm'],
+                    result['k_harm'] - result['k_lin'], result['n_data'],
+                    _dbic_phrase(result))
+        return result
+
+    def _compute_delta_bic(self):
+        """Recompute ΔBIC with no stored/persisted stats: re-run the
+        deterministic least-squares optimizer for the MLE, then evaluate."""
+        from .fit import optimize, delta_bic
+        t = self.times
+        planet, epoch = np.array(t.planet), np.array(t.epoch)
+        tc, tc_err = np.array(t.tc), np.array(t.tc_unc)
+        res = optimize(self.spec, planet, epoch, tc, tc_err, self.planet_letters,
+                       self.non_transiting_outer, self.phase_offsets)
+        return delta_bic(self.spec, planet, epoch, tc, tc_err, self.planet_letters,
+                         self.non_transiting_outer, self.phase_offsets, res.x)
 
     def predict(self, window, t_offset=0, output_list=None):
         """
@@ -429,6 +469,40 @@ def _resolve_predict_options(args, parser):
     return fit
 
 
+_FIT_STATS = 'fit_stats.json'
+_DBIC_KEYS = ('delta_bic', 'evidence', 'chi2_lin', 'chi2_harm', 'k_lin', 'k_harm', 'n_data')
+
+
+def _write_fit_stats(outdir, stats):
+    """Persist the fit summary (ΔBIC breakdown + goodness of fit + MCMC diagnostics)."""
+    import json
+    with open(os.path.join(outdir, _FIT_STATS), 'w') as f:
+        json.dump(stats, f, indent=2)
+
+
+def _read_fit_stats(outdir):
+    """Load the persisted ΔBIC fields, or None if the file is absent,
+    unreadable, or missing any ΔBIC key."""
+    import json
+    fp = os.path.join(outdir, _FIT_STATS)
+    if not os.path.exists(fp):
+        return None
+    try:
+        with open(fp) as f:
+            cfg = json.load(f)
+        return {k: cfg[k] for k in _DBIC_KEYS}
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _dbic_phrase(result):
+    """Human phrase for the ΔBIC log headline."""
+    ev = result['evidence']
+    if result['delta_bic'] < 0 or ev == 'inconclusive':
+        return ev
+    return f'{ev} evidence for TTVs'
+
+
 def cli():
 
     import time
@@ -508,6 +582,7 @@ def cli():
             harmonic.fit(walkers, burn, steps, thin, nproc, clobber, seed=args.seed)
             harmonic.plot_samples(tmax)
             harmonic.print_constraints(mstar, seed=args.seed)
+            harmonic.delta_bic()
             logger.info("TTV fitting completed successfully")
 
         else:
