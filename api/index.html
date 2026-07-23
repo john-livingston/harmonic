@@ -559,6 +559,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#harmonic.Harmonic.predict--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -732,6 +743,45 @@
         
           <li class="md-nav__item">
   <a href="#harmonic.predict.scan_transits--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#harmonic.fisher.rank_transits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rank_transits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="rank_transits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#harmonic.fisher.rank_transits--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#harmonic.fisher.rank_transits--returns" class="md-nav__link">
     <span class="md-ellipsis">
       
         Returns
@@ -1020,6 +1070,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#harmonic.Harmonic.predict--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1193,6 +1254,45 @@
         
           <li class="md-nav__item">
   <a href="#harmonic.predict.scan_transits--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#harmonic.fisher.rank_transits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rank_transits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="rank_transits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#harmonic.fisher.rank_transits--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#harmonic.fisher.rank_transits--returns" class="md-nav__link">
     <span class="md-ellipsis">
       
         Returns
@@ -1490,14 +1590,15 @@ seed : int, optional
 
 
 <h3 id="harmonic.Harmonic.predict" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">predict</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">t_offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">output_list</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">predict</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">t_offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">output_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="s1">&#39;total&#39;</span><span class="p">)</span></code>
 
 <a href="#harmonic.Harmonic.predict" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Predict transit times within a specified time window.</p>
+        <p>Predict transit times within a specified time window and rank them by
+the information gain of observing them.</p>
 <h5 id="harmonic.Harmonic.predict--parameters">Parameters<a class="headerlink" href="#harmonic.Harmonic.predict--parameters" title="Permanent link">&para;</a></h5>
 <p>window : list of str
     Time window as two ISO timestamps (in JD/BJD)
@@ -1505,7 +1606,17 @@ t_offset : float, optional
     Timing offset to add to ephemeris times to get BJD (default: 0 for BJD data,
     use 2454833 for BKJD data)
 output_list : str, optional
-    Path to output CSV file with transit list (default: None, no file output)</p>
+    Path to output CSV file with transit list (default: None, no file output)
+sigma : float, optional
+    Assumed timing precision (days) of the future observations for the
+    information-gain ranking (default: None, each planet's median tc_unc)
+rank_by : str, optional
+    Criterion driving the greedy observing order: 'total' or 'ttv'
+    (default: 'total')</p>
+<h5 id="harmonic.Harmonic.predict--returns">Returns<a class="headerlink" href="#harmonic.Harmonic.predict--returns" title="Permanent link">&para;</a></h5>
+<p>DataFrame
+    Predicted transits with information-gain columns (sigma,
+    gain_total, gain_ttv, greedy_rank, greedy_gain).</p>
 
 
     </div>
@@ -1812,6 +1923,48 @@ t_ref : float
 <p>DataFrame
     Predicted transit times with columns: planet, epoch, tc_mean, tc_std,
     tc_median, tc_bjd, ingress, egress, ingress_iso, egress_iso, tc_iso.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="harmonic.fisher.rank_transits" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">harmonic</span><span class="o">.</span><span class="n">fisher</span><span class="o">.</span><span class="n">rank_transits</span><span class="p">(</span><span class="n">flatchain</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">transit_df</span><span class="p">,</span> <span class="n">planet_letters</span><span class="p">,</span> <span class="n">non_transiting_outer</span><span class="p">,</span> <span class="n">phase_offsets</span><span class="p">,</span> <span class="n">sigmas</span><span class="p">,</span> <span class="n">t_ref</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="s1">&#39;total&#39;</span><span class="p">)</span></code>
+
+<a href="#harmonic.fisher.rank_transits" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Rank predicted transits by the information gain of observing them.</p>
+<h4 id="harmonic.fisher.rank_transits--parameters">Parameters<a class="headerlink" href="#harmonic.fisher.rank_transits--parameters" title="Permanent link">&para;</a></h4>
+<p>flatchain : DataFrame
+    MCMC samples; must contain all columns in <code>names</code>.
+names : list of str
+    Parameter order (spec.names); defines the covariance layout.
+transit_df : DataFrame
+    scan_transits output (needs <code>planet</code> and <code>epoch</code> columns).
+planet_letters : str
+    Planet letter designations.
+non_transiting_outer : bool
+    Whether the last letter is a non-transiting outer planet.
+phase_offsets : bool
+    Whether the fit used independent per-planet phases.
+sigmas : dict
+    Assumed future timing precision (days) per planet letter.
+t_ref : float
+    Phase-pivot time (spec.t_ref).
+rank_by : str
+    'total' or 'ttv': the criterion driving the greedy observing order.</p>
+<h4 id="harmonic.fisher.rank_transits--returns">Returns<a class="headerlink" href="#harmonic.fisher.rank_transits--returns" title="Permanent link">&para;</a></h4>
+<p>DataFrame
+    Copy of transit_df with added columns: sigma, gain_total, gain_ttv
+    (independent gains, bits), greedy_rank (1-based observing order) and
+    greedy_gain (chosen-criterion gain at pick time, bits).</p>
 
 
     </div>

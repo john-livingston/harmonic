@@ -450,6 +450,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ranking-future-transits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranking future transits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mass-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -621,6 +632,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ranking-future-transits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranking future transits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mass-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -684,6 +706,16 @@ t_c(p, E) = t_{\mathrm{lin}}(p, E) + \sum_{\text{pairs } (i,j)\ni p} a_{p}\,\sin
 \Delta\mathrm{BIC} = \left(\chi^2_{\mathrm{lin}} - \chi^2_{\mathrm{harm}}\right) - \left(k_{\mathrm{harm}} - k_{\mathrm{lin}}\right)\ln N,
 \]</div>
 <p>where each <span class="arithmatex">\(\chi^2\)</span> is evaluated at that model's maximum-likelihood fit, <span class="arithmatex">\(k\)</span> is its number of free parameters, and <span class="arithmatex">\(N\)</span> is the total number of transit times. Because the linear model is nested inside the harmonic one, the Gaussian log-likelihood constant cancels. A positive <span class="arithmatex">\(\Delta\mathrm{BIC}\)</span> favors the harmonic model, i.e. the TTVs are detected, and larger is stronger (roughly <span class="arithmatex">\(&gt;2\)</span> positive, <span class="arithmatex">\(&gt;6\)</span> strong, <span class="arithmatex">\(&gt;10\)</span> very strong). The value and its ingredients are written to <code>fit_stats.json</code> and printed at the end of a fit.</p>
+<h2 id="ranking-future-transits">Ranking future transits<a class="headerlink" href="#ranking-future-transits" title="Permanent link">&para;</a></h2>
+<p>A prediction run also ranks each upcoming transit by its expected information gain: the reduction in posterior entropy from observing it at an assumed timing precision <span class="arithmatex">\(\sigma\)</span> (each planet's median measured uncertainty by default, or a global <code>--sigma</code>). Under a Gaussian approximation of the posterior with covariance <span class="arithmatex">\(C\)</span> (estimated from the chain), an observation with model gradient <span class="arithmatex">\(j\)</span> (computed analytically at the candidate transit) is a rank-one Fisher information update, and the total gain in bits is</p>
+<div class="arithmatex">\[
+\Delta I_{\mathrm{tot}} = \tfrac{1}{2}\log_2\!\left(1 + \frac{j^{\mathsf T} C\, j}{\sigma^2}\right),
+\]</div>
+<p>where <span class="arithmatex">\(j^{\mathsf T} C j\)</span> is the variance of the predicted transit time: the most informative transit is the one whose predicted time is most uncertain relative to the precision it can be measured with. A second, targeted gain counts only the information reaching the TTV parameters (amplitudes, ratios, super-periods), discounting what merely re-pins the linear ephemerides:</p>
+<div class="arithmatex">\[
+\Delta I_{\mathrm{TTV}} = \Delta I_{\mathrm{tot}} - \tfrac{1}{2}\log_2\!\left(1 + \frac{j_N^{\mathsf T} F_{NN}^{-1} j_N}{\sigma^2}\right),
+\]</div>
+<p>where <span class="arithmatex">\(N\)</span> is the ephemeris block <span class="arithmatex">\((T_0, P)\)</span> of the information matrix <span class="arithmatex">\(F = C^{-1}\)</span>. Because consecutive transits carry nearly duplicate information, harmonic also reports a greedy observing order: the best transit is selected, the covariance is updated as if it had been observed, and the remaining candidates are re-scored (<code>greedy_rank</code>, with <code>greedy_gain</code> the gain at selection time). The criterion driving the order is chosen with <code>--rank-by</code> (<code>total</code>, the default, or <code>ttv</code>).</p>
 <h2 id="mass-constraints">Mass constraints<a class="headerlink" href="#mass-constraints" title="Permanent link">&para;</a></h2>
 <p>From the posterior, harmonic derives planet masses following Lithwick, Xie &amp; Wu (2012). The complex TTV amplitudes of the inner and outer planet of a near-resonant pair are</p>
 <div class="arithmatex">\[
