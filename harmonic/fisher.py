@@ -5,6 +5,18 @@ chain; a hypothetical future observation with timing precision sigma
 contributes rank-one Fisher information j j^T / sigma^2, where j is the
 analytic model gradient at the candidate transit. Gains are Gaussian
 posterior-entropy reductions, reported in bits.
+
+Real chains mix units-disparate parameters (a period variance ~1e4 next to
+an amplitude variance ~1e-6) and, when short or unconverged, carry near-
+degenerate directions; the raw covariance C can have a condition number of
+1e15 or worse. At that conditioning pinv(C) is numerically meaningless, and
+the nested pinv of its nuisance-block submatrix is worse still. All the
+gains below are invariant under per-parameter diagonal rescaling, so the
+actual computation is done in correlation space: C is whitened to
+R = C / outer(d, d) with d = sqrt(diag(C)), which typically drops the
+condition number by many orders of magnitude while leaving every gain
+unchanged in exact arithmetic. Gradients are whitened to match (Jw = J * d)
+so quadratic forms in R equal the original ones in C.
 """
 import logging
 import numpy as np
@@ -96,38 +108,48 @@ def rank_transits(flatchain, names, transit_df, planet_letters,
     theta = {n: float(np.median(X[:, k])) for k, n in enumerate(names)}
     C = np.cov(X, rowvar=False)
     C = (C + C.T) / 2
-    F = _sym_pinv(C)
     nuis = _ephem_mask(names)
+
+    # Whiten to correlation space (see module docstring): all gains below
+    # are invariant under this rescaling, but the raw covariance C is
+    # usually far too ill-conditioned for pinv to be numerically trustworthy.
+    d = np.sqrt(np.diag(C))
+    d = np.where(d > 0, d, 1.0)
+    R = C / np.outer(d, d)
+    R = (R + R.T) / 2
+    F = _sym_pinv(R)
 
     J = jacobian(theta, list(names), np.asarray(out.planet),
                  np.asarray(out.epoch, dtype=float), planet_letters,
                  non_transiting_outer, phase_offsets, t_ref=t_ref)
+    Jw = J * d
     sig = np.array([float(sigmas[p]) for p in out.planet])
 
-    gt, gv = _gains(C, _sym_pinv(F[np.ix_(nuis, nuis)]), nuis, J, sig)
+    gt, gv = _gains(R, _sym_pinv(F[np.ix_(nuis, nuis)]), nuis, Jw, sig)
     out['sigma'] = sig
     out['gain_total'] = gt
     out['gain_ttv'] = gv
 
     # Greedy observing order: pick the best remaining candidate against the
     # current covariance, then update as if it had been observed
-    # (Sherman-Morrison on C; additive Fisher update on the nuisance block).
+    # (Sherman-Morrison on R; additive Fisher update on the nuisance block).
+    # All bookkeeping stays in whitened space throughout.
     remaining = list(range(len(out)))
     ranks = np.zeros(len(out), dtype=int)
     ggain = np.zeros(len(out))
-    Cg = C.copy()
+    Cg = R.copy()
     Fnn = F[np.ix_(nuis, nuis)].copy()
     for r in range(1, len(out) + 1):
-        g_t, g_v = _gains(Cg, _sym_pinv(Fnn), nuis, J[remaining], sig[remaining])
+        g_t, g_v = _gains(Cg, _sym_pinv(Fnn), nuis, Jw[remaining], sig[remaining])
         g = g_t if rank_by == 'total' else g_v
         b = int(np.argmax(g))
         i = remaining.pop(b)
         ranks[i], ggain[i] = r, float(g[b])
-        j, s2 = J[i], sig[i]**2
-        Cj = Cg @ j
-        Cg = Cg - np.outer(Cj, Cj) / (s2 + float(j @ Cj))
+        jw, s2 = Jw[i], sig[i]**2
+        Cj = Cg @ jw
+        Cg = Cg - np.outer(Cj, Cj) / (s2 + float(jw @ Cj))
         Cg = (Cg + Cg.T) / 2
-        jn = j[nuis]
+        jn = jw[nuis]
         Fnn = Fnn + np.outer(jn, jn) / s2
     out['greedy_rank'] = ranks
     out['greedy_gain'] = ggain

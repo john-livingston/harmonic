@@ -174,3 +174,35 @@ def test_empty_transit_df():
     assert len(out) == 0
     for c in ('sigma', 'gain_total', 'gain_ttv', 'greedy_rank', 'greedy_gain'):
         assert c in out.columns
+
+
+def test_gain_ttv_survives_ill_conditioned_chain():
+    # regression: a units-disparate, near-degenerate chain (real unconverged
+    # chains look like this; observed cond(C) ~ 2e15) made pinv(C) garbage,
+    # qn > q, and the clip silently floored gain_ttv to 0 for all candidates.
+    # Whitened (correlation-space) computation must keep gain_ttv positive and
+    # finite for a candidate that plainly carries TTV information.
+    #
+    # Reproduction note: the raw suggested recipe (per_bc scale 500) did NOT
+    # trigger the bug against the pre-fix code -- cond(C) landed at ~1e29-1e30,
+    # a regime where numpy's pinv truncates the null space cleanly and
+    # self-consistently. The failure needs cond(C) landing near numpy pinv's
+    # rcond truncation boundary (~1/eps ~ 1e15-1e17 relative to the largest
+    # singular value), where the truncation decision for C and for the nested
+    # F[nuis, nuis] submatrix become inconsistent. Raising per_bc's scale from
+    # 500 to 3e4 (60x) lands cond(C) ~ 5e23 with the *whitened* cond(R) still
+    # sitting in that pathological ~1e16 band pre-fix, which reproduces a
+    # clean (non-NaN) gain_ttv == 0.0 floor for every candidate.
+    rng = np.random.default_rng(11)
+    n = 300  # few samples in 8 dims, autocorrelation-like redundancy
+    fc = _chain(n=n, seed=11)
+    fc['per_bc'] = BASE['per_bc'] + rng.normal(0, 3e4, n)        # huge units scale
+    lam = rng.normal(0, 1e-6, n)
+    fc['as_bc'] = BASE['as_bc'] + lam                            # near-perfectly
+    fc['ac_bc'] = BASE['ac_bc'] + lam * (1 + rng.normal(0, 1e-4, n))  # correlated pair
+    tdf = _tdf([{'planet': 'b', 'epoch': 60}, {'planet': 'c', 'epoch': 30}])
+    out = rank_transits(fc, NAMES, tdf, 'bc', False, False,
+                        {'b': 1e-5, 'c': 1e-5}, 0.0)
+    assert np.all(np.isfinite(out.gain_total)) and np.all(np.isfinite(out.gain_ttv))
+    assert (out.gain_ttv > 0).all()   # was: exactly 0 for all candidates
+    assert (out.gain_total >= out.gain_ttv - 1e-9).all()
