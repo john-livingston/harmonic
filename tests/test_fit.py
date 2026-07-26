@@ -233,3 +233,91 @@ def test_walker_ball_independent_unconstrained_param():
     p0 = _walker_ball(res, spec, 30, np.random.default_rng(0))
     assert np.all((p0 > spec.lo) & (p0 < spec.hi))
     assert walkers_independent(p0)  # the exact check emcee runs at init
+
+
+# --- phase-offsets mode: the fit pipeline had no coverage here, only the
+# model/jacobian and params layers did ---
+
+TRUE_PO = {'t0_b': 100.0, 'per_b': 45.155, 't0_c': 110.0, 'per_c': 85.32,
+           'as_bc': 0.010, 'ac_bc': -0.006,   # planet b
+           'as_cb': 0.010, 'ac_cb': 0.017,    # planet c, ~90 deg from b
+           'per_bc': 650.0}
+
+
+def _make_synth_po():
+    """Synthetic pair whose planets are ~90 deg apart in TTV phase, i.e. NOT
+    the strict anti-correlation the shared-phase model assumes. Only
+    --phase-offsets can represent it."""
+    rng = np.random.default_rng(3)
+    planet = np.array(['b']*30 + ['c']*16)
+    epoch = np.array(list(range(30)) + list(range(16)), dtype=float)
+    sigma = 0.0015
+    tc = model(TRUE_PO, planet, epoch, 'bc', False, True, t_ref=0.0) \
+        + rng.normal(0, sigma, len(epoch))
+    times = pd.DataFrame(dict(planet=planet, epoch=epoch, tc=tc, tc_unc=sigma))
+    ephem = pd.DataFrame({'per': [45.155, 85.32], 'tc': [100.0, 110.0]}, index=['b', 'c'])
+    p_init = {'a_bc': 0.008, 'a_cb': 0.015, 'per_bc': 700.0, 't_bc': 200.0, 'phi_bc': 0.0}
+    spec = build_spec(p_init, ephem, times, 'bc', phase_offsets=True)
+    return spec, planet, epoch, tc, np.full(len(tc), sigma)
+
+
+def _po_spec(letters, non_transiting_outer):
+    """Minimal phase-offsets spec for `letters`, for structural checks."""
+    transiting = letters[:-1] if non_transiting_outer else letters
+    planet = np.array(sum([[c]*8 for c in transiting], []))
+    epoch = np.array(list(range(8)) * len(transiting), dtype=float)
+    times = pd.DataFrame(dict(planet=planet, epoch=epoch,
+                              tc=100.0 + 45.0*epoch, tc_unc=0.001))
+    ephem = pd.DataFrame({'per': [45.0*(i+1) for i in range(len(letters))],
+                          'tc': [100.0*(i+1) for i in range(len(letters))]},
+                         index=list(letters))
+    p_init = {}
+    for a, b in zip(letters[:-1], letters[1:]):
+        p_init.update({f'a_{a}{b}': 0.01, f'per_{a}{b}': 600.0, f't_{a}{b}': 200.0})
+        if b in transiting:
+            p_init[f'a_{b}{a}'] = 0.01
+    return build_spec(p_init, ephem, times, letters,
+                      non_transiting_outer=non_transiting_outer, phase_offsets=True)
+
+
+def test_optimize_phase_offsets_recovers_relative_phase():
+    # regression: the whole optimize() path (including the phase-offsets
+    # branch of _pair_flip_sets and every sign-flip restart it generates) was
+    # never exercised with phase_offsets=True. Assertions are on
+    # phase-reference-invariant quantities: the fit measures phase against
+    # spec.t_ref while the data is generated at t_ref=0, so absolute phases
+    # differ by a common 2*pi*t_ref/per_ttv. The RELATIVE phase of the pair is
+    # invariant, and it is the quantity --phase-offsets exists to measure.
+    spec, planet, epoch, tc, err = _make_synth_po()
+    res = optimize(spec, planet, epoch, tc, err, 'bc', False, True)
+    d = spec.to_dict(res.x)
+    amp_b, amp_c = np.hypot(d['as_bc'], d['ac_bc']), np.hypot(d['as_cb'], d['ac_cb'])
+    assert abs(amp_b - np.hypot(TRUE_PO['as_bc'], TRUE_PO['ac_bc'])) < 0.002
+    assert abs(amp_c - np.hypot(TRUE_PO['as_cb'], TRUE_PO['ac_cb'])) < 0.002
+    rel_fit = np.arctan2(d['ac_cb'], d['as_cb']) - np.arctan2(d['ac_bc'], d['as_bc'])
+    rel_true = (np.arctan2(TRUE_PO['ac_cb'], TRUE_PO['as_cb'])
+                - np.arctan2(TRUE_PO['ac_bc'], TRUE_PO['as_bc']))
+    wrap = lambda x: (x + np.pi) % (2*np.pi) - np.pi
+    assert abs(wrap(rel_fit - rel_true)) < 0.15   # ~9 deg; truth is ~90 deg apart
+    assert abs(wrap(rel_true) - np.pi/2) < 0.05   # premise: not anti-correlated
+    assert abs(d['per_bc'] - TRUE_PO['per_bc']) < 30.0
+    assert np.sum(res.fun**2) / (len(tc) - len(spec)) < 2.0
+
+
+def test_pair_flip_sets_phase_offsets_structure():
+    # each pair must be flipped once (from the inner side), every generated
+    # name must resolve in spec.index (optimize() does x0[spec.index[nm]] *= -1,
+    # so a bad name is a KeyError on every phase-offsets fit), and a pair whose
+    # outer planet does not transit gets only the inner variant
+    from harmonic.fit import _pair_flip_sets
+    for letters, nto, n_pairs, n_variants in [('bc', False, 1, 3),
+                                              ('bcd', False, 2, 6),
+                                              ('bcd', True, 2, 4)]:
+        spec = _po_spec(letters, nto)
+        groups = _pair_flip_sets(spec, True)
+        assert len(groups) == n_pairs, letters
+        assert sum(len(v) for v in groups) == n_variants, letters
+        for name in (nm for g in groups for v in g for nm in v):
+            assert name in spec.index, (letters, name)
+    # non-transiting outer pair: inner-only variant, no outer as/ac to flip
+    assert _pair_flip_sets(_po_spec('bcd', True), True)[1] == [['as_cd', 'ac_cd']]
