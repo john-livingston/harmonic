@@ -2,6 +2,7 @@
 
 A Python package for multi-harmonic Transit Timing Variation (TTV) model fitting and transit prediction for exoplanet systems.
 
+[![CI](https://github.com/john-livingston/harmonic/actions/workflows/ci.yml/badge.svg)](https://github.com/john-livingston/harmonic/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
 [![Documentation](https://img.shields.io/badge/docs-009688.svg)](https://john-livingston.github.io/harmonic/)
