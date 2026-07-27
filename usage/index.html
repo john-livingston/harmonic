@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -665,6 +665,7 @@
 <p>Planet integers are mapped to letters in period order (<code>0 → b</code>, <code>1 → c</code>, …); override the letters with <code>-l</code>.</p>
 <h2 id="configuration-file">Configuration file<a class="headerlink" href="#configuration-file" title="Permanent link">&para;</a></h2>
 <p>INI format. <code>[INIT]</code> gives initial guesses for each planet pair's TTV amplitude, super-period, and phase reference; <code>[OUTER]</code> gives the ephemeris of a non-transiting outer planet (used with <code>-n</code>); <code>[T14]</code> gives transit durations (days) used only for prediction.</p>
+<p><code>[T14]</code> keys must be bare planet letters (<code>b = 0.24</code>), one per transiting planet, matching the letters in use (see <code>-l</code>). Names or prefixed forms such as <code>planet_b</code> are rejected with an error naming the key. Durations for planets outside a given fit are ignored, so one config can serve fits over different subsets of the system.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">[INIT]</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="na">a_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.02</span><span class="w">          </span><span class="c1"># TTV amplitude (days)</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="na">per_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">1000</span><span class="w">        </span><span class="c1"># TTV super-period (days)</span>
@@ -748,7 +749,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.sections", "navigation.top"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
       
