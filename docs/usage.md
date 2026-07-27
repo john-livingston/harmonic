@@ -69,6 +69,8 @@ Planet integers are mapped to letters in period order (`0 → b`, `1 → c`, …
 
 INI format. `[INIT]` gives initial guesses for each planet pair's TTV amplitude, super-period, and phase reference; `[OUTER]` gives the ephemeris of a non-transiting outer planet (used with `-n`); `[T14]` gives transit durations (days) used only for prediction.
 
+`[T14]` keys must be bare planet letters (`b = 0.24`), one per transiting planet, matching the letters in use (see `-l`). Names or prefixed forms such as `planet_b` are rejected with an error naming the key. Durations for planets outside a given fit are ignored, so one config can serve fits over different subsets of the system.
+
 ```ini
 [INIT]
 a_bc = 0.02          # TTV amplitude (days)

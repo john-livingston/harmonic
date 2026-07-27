@@ -144,6 +144,8 @@ b = 0.24            # Planet b duration (days)
 c = 0.12            # Planet c duration (days)
 ```
 
+`[T14]` keys must be bare planet letters, one per transiting planet, matching the letters in use (see `-l`); names or prefixed forms such as `planet_b` are rejected with an error naming the key.
+
 ## Output Files
 
 The package generates several output files in the specified directory:

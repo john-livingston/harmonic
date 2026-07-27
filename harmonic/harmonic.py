@@ -15,6 +15,42 @@ from .lithwick import print_constraints
 logger = logging.getLogger(__name__)
 
 
+def _resolve_t14s(config, letters):
+    """Transit durations from the [T14] config section, keyed by planet letter.
+
+    [T14] keys must be bare planet letters, because scan_transits and
+    plot_prediction index this mapping by letter. Any other spelling is
+    rejected here, naming the offending key, rather than surfacing later as a
+    bare KeyError from inside the scan. configparser lowercases keys, so the
+    match against the planet letters is case-insensitive. Entries for planets
+    outside `letters` are ignored, so one config can serve fits that include
+    different subsets of the system.
+    """
+    from .exceptions import ConfigurationError
+
+    if 'T14' not in config:
+        raise ConfigurationError("transit duration section [T14] missing from configuration")
+    try:
+        raw = {k: float(v) for k, v in config['T14'].items()}
+    except ValueError as e:
+        raise ConfigurationError("invalid T14 values in configuration: must be numeric") from e
+
+    expected = ', '.join(letters)
+    bad = sorted(k for k in raw if len(k) != 1 or not k.isalpha())
+    if bad:
+        raise ConfigurationError(
+            f"invalid [T14] key(s): {', '.join(repr(k) for k in bad)}; keys must be "
+            f"bare planet letters (e.g. 'b = 0.24'), one per transiting planet "
+            f"({expected})")
+    lookup = {k.lower(): v for k, v in raw.items()}
+    missing = [p for p in letters if p.lower() not in lookup]
+    if missing:
+        raise ConfigurationError(
+            f"[T14] has no transit duration for planet(s): {', '.join(missing)}; "
+            f"expected one entry per transiting planet ({expected})")
+    return {p: lookup[p.lower()] for p in letters}
+
+
 class Harmonic:
     """
     TTV model fitting using harmonic analysis and MCMC sampling.
@@ -347,20 +383,15 @@ class Harmonic:
         outdir = self.outdir
 
         # Validate configuration and inputs
-        from .exceptions import ConfigurationError, PredictionError
+        from .exceptions import PredictionError
 
         self._require_chain()
 
         if sigma is not None and sigma <= 0:
             raise PredictionError("--sigma must be positive")
 
-        if 'T14' not in config:
-            raise ConfigurationError("transit duration section [T14] missing from configuration")
-
-        try:
-            t14s = {k:float(v) for k,v in config['T14'].items()}
-        except ValueError as e:
-            raise ConfigurationError("invalid T14 values in configuration: must be numeric") from e
+        letters_ = self.planet_letters[:-1] if self.non_transiting_outer else self.planet_letters
+        t14s = _resolve_t14s(config, letters_)
 
         # Validate window length
         if len(window) != 2:
@@ -393,7 +424,6 @@ class Harmonic:
             t_ref=self.spec.t_ref
         )
 
-        letters_ = self.planet_letters[:-1] if self.non_transiting_outer else self.planet_letters
         sigmas = {p: (sigma if sigma is not None
                       else float(self.times[self.times.planet == p].tc_unc.median()))
                   for p in letters_}
