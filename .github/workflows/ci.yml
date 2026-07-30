@@ -21,8 +21,8 @@ jobs:
     env:
       MPLBACKEND: Agg                     # the suite renders figures headlessly
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -36,10 +36,10 @@ jobs:
     permissions:
       contents: write          # required to push to gh-pages
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0       # gh-deploy needs history for the gh-pages branch
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
