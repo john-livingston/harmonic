@@ -74,7 +74,7 @@ def plot_corner(fc, labels=None, fp=None):
     return _finish(fig, fp)
 
 
-def plot_bestfit(ttv, times, tci, planeti, epochi, planet_letters, non_transiting_outer, fp=None):
+def plot_bestfit(ttv, tci, planeti, epochi, planet_letters, non_transiting_outer, fp=None):
     nplanets = len(planet_letters)
     if non_transiting_outer:
         npmax = nplanets-1
@@ -97,7 +97,7 @@ def plot_bestfit(ttv, times, tci, planeti, epochi, planet_letters, non_transitin
     return _finish(fig, fp)
 
 
-def plot_samples(ttv, times, ephem, flatchain, planeti, planet_letters, non_transiting_outer, phase_offsets=False, tmax=None, fp=None, t_ref=0.0):
+def plot_samples(ttv, times, ephem, flatchain, planet_letters, non_transiting_outer, phase_offsets=False, tmax=None, fp=None, t_ref=0.0):
 
     nplanets = len(planet_letters)
     if tmax is None:

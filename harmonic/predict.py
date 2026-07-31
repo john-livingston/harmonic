@@ -85,9 +85,6 @@ def scan_transits(flatchain, ephem, planet_letters, non_transiting_outer,
     return pd.DataFrame(rows, columns=cols)
 
 
-get_transit_list = scan_transits
-
-
 def plot_prediction(df, planet_letters, non_transiting_outer, t14s, window,
                     truncate=True, truncate_pad=1 / 24, fp=None):
 

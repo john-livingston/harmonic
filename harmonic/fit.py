@@ -5,7 +5,7 @@ import pandas as pd
 import emcee
 from scipy.optimize import least_squares
 
-from .model import model, jacobian, residual
+from .model import jacobian, residual
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +196,7 @@ def _bic_evidence(dbic):
     for thresh, label in _BIC_LEVELS:
         if dbic >= thresh:
             return label
-    return 'inconclusive'
+    return 'inconclusive'  # reached only for a non-finite dbic (NaN fails every comparison above)
 
 
 def _linear_chi2(planet, epoch, tc, tc_err, transiting):

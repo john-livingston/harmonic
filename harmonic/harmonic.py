@@ -271,14 +271,13 @@ class Harmonic:
             tc_err = np.array(times.tc_unc)
 
             from .fit import run_fit, delta_bic
-            from .params import derived_frame
             fc, chain, diag = run_fit(self.spec, planet, epoch, tc, tc_err,
                                       planet_letters, non_transiting_outer,
                                       phase_offsets, walkers, burn, steps, thin, nproc, seed)
             tci = model(self.spec.to_dict(diag['x_opt']), planeti, epochi,
                         planet_letters, non_transiting_outer, phase_offsets,
                         t_ref=self.spec.t_ref)
-            plot_bestfit(ttv, times, tci, planeti, epochi, planet_letters,
+            plot_bestfit(ttv, tci, planeti, epochi, planet_letters,
                          non_transiting_outer, fp=os.path.join(outdir, 'init.png'))
             fc.to_csv(os.path.join(outdir, 'samples.csv.gz'), index=False)
             # spec.offset is (ndim,) and broadcasts over the (nsteps, nwalkers, ndim)
@@ -324,7 +323,6 @@ class Harmonic:
             self.times,
             self.ephem,
             self.flatchain,
-            self.planeti,
             self.planet_letters,
             self.non_transiting_outer,
             self.phase_offsets,
