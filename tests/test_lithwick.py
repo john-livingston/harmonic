@@ -132,6 +132,23 @@ class TestConstraints:
         assert (df.j == 2).all()
         assert any('cd' in r.message and 'ephem' in r.message for r in caplog.records)
 
+    def test_pair_with_too_few_accepted_samples_warns(self, caplog):
+        # cd sits near 2:1 (170/85.32) but its observed TTV amplitude (5 d) is
+        # far larger than any (mu, |Zfree|) prior draw can produce, so the ABC
+        # step accepts nothing and both cd rows are dropped: that must warn
+        # rather than vanish silently, and bc must still return both planets
+        import logging
+        fc = make_chain_bcd(per_d=170.0)
+        rng = np.random.default_rng(1)
+        n = len(fc)
+        fc['as_cd'] = 5.0 + rng.normal(0, 1e-3, n)
+        fc['ac_cd'] = rng.normal(0, 1e-3, n)
+        fc['r_dc'] = -2.0 + rng.normal(0, 0.01, n)
+        with caplog.at_level(logging.WARNING, logger='harmonic.lithwick'):
+            df = print_constraints(fc, 'bcd', False, seed=1)
+        assert set(df.planet) == {'b', 'c'}
+        assert any('cd' in r.message and 'ABC' in r.message for r in caplog.records)
+
     def test_pair_off_resonance_skipped(self, caplog):
         # cd's period ratio (1.05) is far from every supported MMR: that pair
         # must be skipped with a warning, while bc (2:1-ish) still returns

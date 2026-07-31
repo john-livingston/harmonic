@@ -98,6 +98,19 @@ def _constrain(v_obs, v_model_fn, mu, z, mstar):
     return m.mean(), m.std(), z[ix].mean(), z[ix].std()
 
 
+def _record(rows, res, pair, planet, delta, j):
+    """Append one constraint row, or warn and skip when _constrain accepted too
+    few ABC samples. Without the warning the row just vanishes from the returned
+    DataFrame, unlike the other skips in print_constraints, which all name the
+    pair they drop."""
+    if res is None:
+        logger.warning("pair %s: fewer than %d ABC samples accepted for the mass of %s, skipping",
+                       pair, _MIN_ACCEPT, planet)
+        return
+    rows.append(dict(pair=pair, planet=planet, mass_me=res[0], mass_err_me=res[1],
+                     z=res[2], z_err=res[3], delta=delta.mean(), delta_err=delta.std(), j=j))
+
+
 def print_constraints(flatchain, planet_letters, non_transiting_outer,
                       mstar=1.0, phase_offsets=False, ephem=None, seed=42,
                       mu_min_me=1.0, mu_max_me=30.0, z_max=0.1):
@@ -144,14 +157,12 @@ def print_constraints(flatchain, planet_letters, non_transiting_outer,
         # V (inner planet's observed TTV) constrains OUTER mass mu' (eq. 8)
         v = _amp(flatchain, p_i, p_j, phase_offsets, inner=True)
         res = _constrain(v, lambda m, zz: p_ * m / (np.pi * j**(2/3) * (j-1)**(1/3) * delta) * (-f - 1.5 * zz / delta), mu, z, mstar)
-        if res is not None:
-            rows.append(dict(pair=p_i+p_j, planet=p_j, mass_me=res[0], mass_err_me=res[1], z=res[2], z_err=res[3], delta=delta.mean(), delta_err=delta.std(), j=j))
+        _record(rows, res, p_i+p_j, p_j, delta, j)
         # V' (outer planet's observed TTV) constrains INNER mass mu (eq. 9)
         if outer_transits:
             vp = _amp(flatchain, p_i, p_j, phase_offsets, inner=False)
             res = _constrain(vp, lambda m, zz: p_prime * m / (np.pi * j * delta) * (-g + 1.5 * zz / delta), mu, z, mstar)
-            if res is not None:
-                rows.append(dict(pair=p_i+p_j, planet=p_i, mass_me=res[0], mass_err_me=res[1], z=res[2], z_err=res[3], delta=delta.mean(), delta_err=delta.std(), j=j))
+            _record(rows, res, p_i+p_j, p_i, delta, j)
     df = pd.DataFrame(rows)
     for _, r in df.iterrows():
         logger.info("M_%s = %.2f +/- %.2f Me   |Zfree| = %.3f +/- %.3f  (pair %s, j=%d)",
