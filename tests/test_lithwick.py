@@ -36,6 +36,26 @@ def make_chain_phase_offsets(n=2000, per_b=45.155, per_c=85.32, per_ttv=700.0,
     })
 
 
+def make_chain_bcd(per_d=89.586, seed=0, n=2000):
+    """3-planet chain (pairs bc, cd): bc is the same 2:1-ish pair as make_chain
+    so it is never the one under test; per_d controls the cd period ratio
+    (default 89.586/85.32 = 1.05, far from every supported MMR)."""
+    rng = np.random.default_rng(seed)
+    return pd.DataFrame({
+        'per_b': 45.155 + rng.normal(0, 1e-4, n),
+        't0_b': rng.normal(100, 1e-3, n),
+        'per_c': 85.32 + rng.normal(0, 1e-4, n),
+        't0_c': rng.normal(100, 1e-3, n),
+        'per_d': per_d + rng.normal(0, 1e-4, n),
+        't0_d': rng.normal(100, 1e-3, n),
+        'as_bc': 0.01 + rng.normal(0, 1e-4, n),
+        'ac_bc': rng.normal(0, 1e-4, n),
+        'r_cb': -2.0 + rng.normal(0, 0.01, n),
+        'per_bc': 700.0 + rng.normal(0, 1.0, n),
+        'per_cd': 900.0 + rng.normal(0, 1.0, n),
+    })
+
+
 class TestChooseJ:
     def test_exact_ratios(self):
         assert choose_j(2.02) == 2
@@ -100,3 +120,25 @@ class TestConstraints:
         m_small = small[small.planet == 'b'].mass_me.iloc[0]
         m_big = big[big.planet == 'b'].mass_me.iloc[0]
         assert m_big > m_small
+
+    def test_non_transiting_outer_pair_skipped_without_ephem(self, caplog):
+        # ephem=None is the kwarg default: a non-transiting outer pair with no
+        # ephem supplied must be skipped with a warning, while the other pair
+        # (bc, fully transiting) still returns results
+        import logging
+        with caplog.at_level(logging.WARNING, logger='harmonic.lithwick'):
+            df = print_constraints(make_chain(), 'bcd', True, seed=1)
+        assert set(df.planet) == {'b', 'c'}
+        assert (df.j == 2).all()
+        assert any('cd' in r.message and 'ephem' in r.message for r in caplog.records)
+
+    def test_pair_off_resonance_skipped(self, caplog):
+        # cd's period ratio (1.05) is far from every supported MMR: that pair
+        # must be skipped with a warning, while bc (2:1-ish) still returns
+        # results for both planets
+        import logging
+        with caplog.at_level(logging.WARNING, logger='harmonic.lithwick'):
+            df = print_constraints(make_chain_bcd(), 'bcd', False, seed=1)
+        assert set(df.planet) == {'b', 'c'}
+        assert (df.j == 2).all()
+        assert any('cd' in r.message and 'MMR' in r.message for r in caplog.records)
