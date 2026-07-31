@@ -145,6 +145,14 @@ def test_bic_evidence_labels():
     assert _bic_evidence(10.0) == 'very strong'
 
 
+def test_bic_evidence_non_finite_is_inconclusive():
+    # a NaN delta-BIC fails every comparison in _bic_evidence (dbic < 0 and each
+    # dbic >= thresh are all False), so it falls through to the trailing return.
+    # That return looks unreachable but is not: deleting it would return None here.
+    from harmonic.fit import _bic_evidence
+    assert _bic_evidence(float('nan')) == 'inconclusive'
+
+
 def test_delta_bic_formula(synth):
     from harmonic.fit import delta_bic, _linear_chi2
     from harmonic.model import residual
