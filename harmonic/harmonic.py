@@ -134,9 +134,25 @@ class Harmonic:
         if (times.tc_unc <= 0).any():
             raise DataError("tc_unc must be positive")
 
+        # A single-transit planet makes the per-planet linear ephemeris fit
+        # rank-deficient, which surfaces as a raw LAPACK error from np.polyfit.
+        counts = times.planet.value_counts()
+        sparse = sorted(int(p) for p in counts.index[counts < 2])
+        if sparse:
+            raise DataError(
+                f"planet id(s) with fewer than 2 transits: {', '.join(map(str, sparse))}; "
+                "at least 2 transits per planet are required to fit a linear ephemeris")
+
         nplanets = len(times.planet.unique())
         if non_transiting_outer:
             nplanets += 1
+
+        if len(letters) < nplanets:
+            extra = (" (--non-transiting-outer needs one extra letter, for the "
+                     "non-transiting planet)") if non_transiting_outer else ""
+            raise ConfigurationError(
+                f"--letters must name all {nplanets} planets, got {len(letters)} "
+                f"({letters!r}){extra}")
 
         planet_num_to_let = {i:letters[i] for i in range(nplanets)}
         times['planet'] = times.planet.replace(planet_num_to_let)
@@ -146,6 +162,15 @@ class Harmonic:
 
         ephem = ttv.ephem
         if non_transiting_outer:
+            if not config.has_section('OUTER'):
+                raise ConfigurationError(
+                    "no [OUTER] section in configuration; --non-transiting-outer requires "
+                    "[OUTER] with per and t0 for the non-transiting planet")
+            absent = [k for k in ('per', 't0') if not config.has_option('OUTER', k)]
+            if absent:
+                raise ConfigurationError(
+                    f"[OUTER] has no {', '.join(absent)}; --non-transiting-outer requires "
+                    "[OUTER] with per and t0 for the non-transiting planet")
             per_guess = config.getfloat('OUTER', 'per')
             t0_guess = config.getfloat('OUTER', 't0')
             ephem = pd.concat([ephem, pd.DataFrame(dict(per=per_guess, tc=t0_guess), index=[planet_letters[-1]])])
@@ -256,7 +281,11 @@ class Harmonic:
             plot_bestfit(ttv, times, tci, planeti, epochi, planet_letters,
                          non_transiting_outer, fp=os.path.join(outdir, 'init.png'))
             fc.to_csv(os.path.join(outdir, 'samples.csv.gz'), index=False)
-            plot_trace(chain, self.spec.labels(), fp=os.path.join(outdir, 'trace.png'))
+            # spec.offset is (ndim,) and broadcasts over the (nsteps, nwalkers, ndim)
+            # sampler chain: the trace is then in absolute time like the corner plot,
+            # so a shared label such as $T_{0,b}$ means the same thing in both.
+            plot_trace(chain + self.spec.offset, self.spec.labels(),
+                       fp=os.path.join(outdir, 'trace.png'))
             plot_corner(fc, labels=self.spec.labels(), fp=os.path.join(outdir, 'corner.png'))
             dv = derived_frame(fc, planet_letters, non_transiting_outer, phase_offsets)
             for col in dv.columns:
@@ -271,6 +300,13 @@ class Harmonic:
             self._fit_stats = stats
             self.flatchain = fc
             self._chain_mismatch = None
+        else:
+            # plot_samples/print_constraints/delta_bic below then describe the
+            # stored chain rather than the current data, so make the skip visible.
+            logger.warning("reusing the existing chain in %s: the fit was not re-run, "
+                           "and every result below describes that chain (pass "
+                           "--clobber to re-fit the current data)",
+                           os.path.join(self.outdir, 'samples.csv.gz'))
 
     def plot_samples(self, tmax=None):
         """
@@ -639,8 +675,13 @@ def cli():
 
         # Save the inputs used to create the fit: args.txt is the human-readable
         # command record; fit_config.json is the machine-readable fit-defining
-        # options a later predict run recovers.
-        if args.predict is None or clobber:
+        # options a later predict run recovers. Only a run that actually fits may
+        # write them: a predict run would otherwise overwrite the fit's record
+        # with its own defaults, and a skipped fit (chain present, no --clobber)
+        # would leave data.csv describing data the stored chain was not fit to.
+        will_fit = args.predict is None and (
+            clobber or not os.path.exists(os.path.join(outdir, 'samples.csv.gz')))
+        if will_fit:
             with open(os.path.join(outdir, 'args.txt'), 'w') as w:
                 w.write(" ".join(sys.argv)+'\n')
             _write_fit_config(outdir, args)

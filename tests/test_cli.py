@@ -51,6 +51,65 @@ def test_noncontiguous_planet_ids_error(tmp_path, sample_config_file):
                  letters='bc', outdir=str(tmp_path))
 
 
+def test_single_transit_planet_error(tmp_path, sample_config_file):
+    # one row per planet is rank-deficient for the linear ephemeris: caught here
+    # instead of surfacing as a LAPACK error from np.polyfit
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import DataError
+    rows = [dict(planet=0, epoch=i, tc=100. + 45.1 * i, tc_unc=0.01) for i in range(10)]
+    rows.append(dict(planet=1, epoch=0, tc=110., tc_unc=0.01))
+    pd.DataFrame(rows).to_csv(tmp_path / 'd.csv', index=False)
+    with pytest.raises(DataError, match=r'fewer than 2 transits: 1'):
+        Harmonic(fp_data=str(tmp_path / 'd.csv'), fp_config=str(sample_config_file),
+                 letters='bc', outdir=str(tmp_path))
+
+
+def test_too_few_letters_error(tmp_path, sample_data_file, sample_config_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import ConfigurationError
+    with pytest.raises(ConfigurationError) as e:
+        Harmonic(fp_data=str(sample_data_file), fp_config=str(sample_config_file),
+                 letters='cd', outdir=str(tmp_path))
+    assert '3' in str(e.value) and 'cd' in str(e.value)
+
+
+def test_too_few_letters_with_non_transiting_outer_error(tmp_path, sample_data_file,
+                                                         sample_config_file):
+    # -n adds a planet, so the 3-planet dataset needs 4 letters
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import ConfigurationError
+    with pytest.raises(ConfigurationError) as e:
+        Harmonic(fp_data=str(sample_data_file), fp_config=str(sample_config_file),
+                 letters='cdb', outdir=str(tmp_path), non_transiting_outer=True)
+    msg = str(e.value)
+    assert '4' in msg and 'cdb' in msg and 'non-transiting-outer' in msg
+
+
+_INI_BCDE = ('[INIT]\na_bc=0.01\na_cb=-0.01\nper_bc=100\nt_bc=2454900\n'
+             'a_cd=0.01\na_dc=-0.01\nper_cd=200\nt_cd=2454950\n'
+             'a_de=0.01\nper_de=300\nt_de=2454990\n')
+
+
+def test_missing_outer_section_error(tmp_path, sample_data_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import ConfigurationError
+    (tmp_path / 'c.ini').write_text(_INI_BCDE)
+    with pytest.raises(ConfigurationError, match='OUTER') as e:
+        Harmonic(fp_data=str(sample_data_file), fp_config=str(tmp_path / 'c.ini'),
+                 letters='bcde', outdir=str(tmp_path), non_transiting_outer=True)
+    assert 'non-transiting-outer' in str(e.value)
+
+
+def test_outer_section_missing_key_error(tmp_path, sample_data_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import ConfigurationError
+    (tmp_path / 'c.ini').write_text(_INI_BCDE + '\n[OUTER]\nper = 260.354\n')
+    with pytest.raises(ConfigurationError, match='t0') as e:
+        Harmonic(fp_data=str(sample_data_file), fp_config=str(tmp_path / 'c.ini'),
+                 letters='bcde', outdir=str(tmp_path), non_transiting_outer=True)
+    assert 'OUTER' in str(e.value)
+
+
 def test_fit_config_round_trip(tmp_path):
     from harmonic.harmonic import _build_parser, _write_fit_config, _read_fit_config
     args = _build_parser().parse_args(
@@ -204,6 +263,99 @@ def test_predict_list_carries_ranking_columns(tmp_path):
     got = pd.read_csv(out_csv)
     for c in ('sigma', 'gain_total', 'gain_ttv', 'greedy_rank', 'greedy_gain'):
         assert c in got.columns
+
+
+def _seed_predict_dir(tmp_path):
+    """A predict-ready outdir: kep51 data shifted to BKJD (so t_offset matters),
+    the kep51 config, a synthetic chain, and a fit_config.json whose values are
+    all different from the CLI defaults. Returns the recorded options."""
+    import json
+    import shutil
+    import numpy as np
+    from harmonic.harmonic import Harmonic
+    t_offset = 2454833.0
+    times = pd.read_csv(os.path.join(REPO, 'examples/kep51.csv'), comment='#')
+    times['tc'] = times.tc - t_offset
+    times.to_csv(tmp_path / 'data.csv', index=False)
+    shutil.copy(os.path.join(REPO, 'examples/kep51.ini'), tmp_path / 'config.ini')
+    h = Harmonic(letters='bcd', outdir=str(tmp_path), phase_offsets=True)
+    rng = np.random.default_rng(0)
+    x0 = h.spec.x0 + h.spec.offset
+    width = 1e-4 * (h.spec.hi - h.spec.lo)
+    fc = pd.DataFrame(rng.normal(x0, width, size=(200, len(h.spec))), columns=h.spec.names)
+    fc.to_csv(tmp_path / 'samples.csv.gz', index=False)
+    opts = {'letters': 'bcd', 'non_transiting_outer': False,
+            'phase_offsets': True, 't_offset': t_offset}
+    (tmp_path / 'fit_config.json').write_text(json.dumps(opts))
+    (tmp_path / 'args.txt').write_text('the original fit command\n')
+    return opts
+
+
+def test_predict_clobber_preserves_fit_inputs(tmp_path):
+    # --clobber on a predict run must not rewrite the fit's record of its inputs
+    import json
+    import sys as _sys
+    from unittest.mock import patch
+    from harmonic.harmonic import cli
+    opts = _seed_predict_dir(tmp_path)
+    argv = ['harmonic', '-o', str(tmp_path), '--clobber',
+            '--predict', '2017-05-01 00:00', '2017-07-30 00:00']
+    with patch.object(_sys, 'argv', argv):
+        cli()
+    assert json.loads((tmp_path / 'fit_config.json').read_text()) == opts
+    assert (tmp_path / 'args.txt').read_text() == 'the original fit command\n'
+
+
+def test_fit_inputs_not_written_when_fit_is_skipped(tmp_path):
+    # existing chain + no --clobber: fit() skips, so data.csv must keep describing
+    # the data the stored chain was fit to
+    import sys as _sys
+    from unittest.mock import patch
+    from harmonic.harmonic import cli
+    _seed_predict_dir(tmp_path)
+    original = (tmp_path / 'data.csv').read_text()
+    other = pd.read_csv(tmp_path / 'data.csv').groupby('planet').head(5)
+    other.to_csv(tmp_path / 'other.csv', index=False)
+    argv = ['harmonic', '-i', str(tmp_path / 'other.csv'), '-o', str(tmp_path),
+            '-l', 'bcd', '--phase-offsets', '--nproc', '1']
+    with patch.object(_sys, 'argv', argv):
+        cli()
+    assert (tmp_path / 'data.csv').read_text() == original
+
+
+def test_fit_skip_warns(tmp_path, caplog):
+    import logging
+    from harmonic.harmonic import Harmonic
+    kw = dict(fp_data=os.path.join(REPO, 'examples/kep51.csv'),
+              fp_config=os.path.join(REPO, 'examples/kep51.ini'), outdir=str(tmp_path))
+    h = Harmonic(**kw)
+    pd.DataFrame({n: [0.0] for n in h.spec.names}).to_csv(
+        tmp_path / 'samples.csv.gz', index=False)
+    h = Harmonic(**kw)  # re-read so the stored chain is loaded
+    assert h.flatchain is not None
+    with caplog.at_level(logging.WARNING, logger='harmonic.harmonic'):
+        h.fit(clobber=False)
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert any('samples.csv.gz' in m and '--clobber' in m for m in warnings), warnings
+
+
+@pytest.mark.slow
+def test_trace_and_corner_share_time_frame(tmp_path, monkeypatch):
+    # both plots label t0 the same way, so both must be in absolute time
+    import numpy as np
+    import harmonic.harmonic as hh
+    got = {}
+    monkeypatch.setattr(hh, 'plot_trace',
+                        lambda chain, labels, fp=None: got.update(chain=np.asarray(chain)))
+    monkeypatch.setattr(hh, 'plot_corner',
+                        lambda fc, labels=None, fp=None: got.update(fc=fc.copy()))
+    h = hh.Harmonic(os.path.join(REPO, 'examples/kep51.csv'),
+                    os.path.join(REPO, 'examples/kep51.ini'), outdir=str(tmp_path))
+    h.fit(walkers=32, burn=10, steps=20, thin=2, nproc=1, seed=1)
+    i = h.spec.index['t0_b']
+    trace_median = float(np.median(got['chain'][:, :, i]))
+    assert trace_median > 1e6  # absolute BJD, not the sampler's offset frame
+    assert abs(trace_median - got['fc']['t0_b'].median()) < 1.0
 
 
 def test_cli_ranking_flags_defaults():
