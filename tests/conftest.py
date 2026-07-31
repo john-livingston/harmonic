@@ -5,6 +5,10 @@ This module provides shared fixtures and configuration for all tests,
 including sample data and temporary directories.
 """
 
+import matplotlib
+matplotlib.use('Agg')  # set before any test imports harmonic.plot, regardless
+                        # of collection order or which test file runs first
+
 import pytest
 import pandas as pd
 import numpy as np

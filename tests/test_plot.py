@@ -1,7 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use('Agg')
 from harmonic.plot import plot_trace, plot_corner, planet_colors, PALETTE
 
 def test_planet_colors_stable():
