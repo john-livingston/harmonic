@@ -17,6 +17,25 @@ def make_chain(n=2000, per_b=45.155, per_c=85.32, per_ttv=700.0, a_in=0.01, r=-2
     })
 
 
+def make_chain_phase_offsets(n=2000, per_b=45.155, per_c=85.32, per_ttv=700.0,
+                             a_in=0.01, a_out=0.01, seed=0):
+    """Like make_chain, but with independent inner/outer amplitudes (as_bc/ac_bc,
+    as_cb/ac_cb) instead of a shared-phase ratio r_cb: the shape --phase-offsets
+    chains actually have."""
+    rng = np.random.default_rng(seed)
+    return pd.DataFrame({
+        'per_b': per_b + rng.normal(0, 1e-4, n),
+        't0_b': rng.normal(100, 1e-3, n),
+        'per_c': per_c + rng.normal(0, 1e-4, n),
+        't0_c': rng.normal(100, 1e-3, n),
+        'as_bc': a_in + rng.normal(0, 1e-4, n),
+        'ac_bc': rng.normal(0, 1e-4, n),
+        'as_cb': a_out + rng.normal(0, 1e-4, n),
+        'ac_cb': rng.normal(0, 1e-4, n),
+        'per_bc': per_ttv + rng.normal(0, 1.0, n),
+    })
+
+
 class TestChooseJ:
     def test_exact_ratios(self):
         assert choose_j(2.02) == 2
@@ -58,3 +77,26 @@ class TestConstraints:
         df = print_constraints(fc, 'bc', True, ephem=ephem, seed=1)
         # audit bug: this pair was silently skipped; inner amplitude constrains outer mass
         assert 'c' in set(df.planet)
+
+    def test_phase_offsets_both_directions_constrained(self):
+        # same 2:1-ish pair as test_returns_dataframe_both_directions, but with
+        # independent as_cb/ac_cb columns instead of r_cb (the --phase-offsets
+        # chain shape); a column-name bug here would raise KeyError
+        df = print_constraints(make_chain_phase_offsets(), 'bc', False, phase_offsets=True, seed=1)
+        assert set(df.planet) == {'b', 'c'}
+        assert (df.j == 2).all()
+        assert (df.mass_me > 0).all()
+
+    def test_phase_offsets_outer_amplitude_column_drives_inner_mass(self):
+        # regression: with phase_offsets=True, the outer planet's OBSERVED
+        # amplitude must be read from as_cb/ac_cb (not r_cb, which does not
+        # exist in this chain shape) and it constrains the INNER planet's mass
+        # (eq. 9); a swapped column or sign would leave 'b' mass insensitive to
+        # a_out, or make it decrease instead of increase
+        small = print_constraints(make_chain_phase_offsets(a_out=0.006), 'bc', False,
+                                  phase_offsets=True, seed=1)
+        big = print_constraints(make_chain_phase_offsets(a_out=0.02), 'bc', False,
+                                phase_offsets=True, seed=1)
+        m_small = small[small.planet == 'b'].mass_me.iloc[0]
+        m_big = big[big.planet == 'b'].mass_me.iloc[0]
+        assert m_big > m_small

@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from harmonic.params import build_spec, ParamSpec
+from harmonic.params import build_spec, ParamSpec, derived_frame
 
 @pytest.fixture
 def system():
@@ -88,3 +88,33 @@ def test_conversion_with_tref_matches_sine_form(system):
     delta = 2*np.pi*(spec.t_ref - p_init['t_bc'])/p_init['per_bc']
     np.testing.assert_allclose(d['as_bc'], 0.01*np.cos(delta), rtol=1e-12)
     np.testing.assert_allclose(d['ac_bc'], 0.01*np.sin(delta), rtol=1e-12)
+
+
+def test_derived_frame_shared_phase():
+    # phase_offsets=False: outer amplitude a_cb comes from the shared-phase
+    # ratio r_cb times the inner amplitude a_bc
+    fc = pd.DataFrame({'as_bc': [0.03], 'ac_bc': [0.04], 'r_cb': [-2.0]})
+    d = derived_frame(fc, 'bc', False, False)
+    assert list(d.columns) == ['a_bc', 'phase_bc', 'a_cb']
+    assert d['a_bc'].iloc[0] == pytest.approx(0.05)  # hypot(0.03, 0.04)
+    assert d['phase_bc'].iloc[0] == pytest.approx(np.arctan2(0.04, 0.03))
+    assert d['a_cb'].iloc[0] == pytest.approx(2.0 * 0.05)  # |r_cb| * a_bc
+
+
+def test_derived_frame_phase_offsets():
+    # phase_offsets=True: outer amplitude a_cb comes from its own as_cb/ac_cb,
+    # independent of the inner pair's amplitude
+    fc = pd.DataFrame({'as_bc': [0.03], 'ac_bc': [0.04], 'as_cb': [0.06], 'ac_cb': [0.08]})
+    d = derived_frame(fc, 'bc', False, True)
+    assert list(d.columns) == ['a_bc', 'phase_bc', 'a_cb']
+    assert d['a_bc'].iloc[0] == pytest.approx(0.05)   # hypot(0.03, 0.04)
+    assert d['a_cb'].iloc[0] == pytest.approx(0.10)   # hypot(0.06, 0.08)
+    assert d['phase_bc'].iloc[0] == pytest.approx(np.arctan2(0.04, 0.03))
+
+
+def test_derived_frame_non_transiting_outer_skips_outer_amplitude():
+    # the non-transiting outer planet has no as/ac or r column at all, so
+    # derived_frame must not try to derive an outer amplitude for that pair
+    fc = pd.DataFrame({'as_bc': [0.03], 'ac_bc': [0.04]})
+    d = derived_frame(fc, 'bc', True, False)
+    assert list(d.columns) == ['a_bc', 'phase_bc']
