@@ -5,11 +5,11 @@ import pytest
 from harmonic.model import model
 from harmonic.params import build_spec
 from harmonic.fit import run_fit, optimize
+from .conftest import TRUE_BC
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-TRUE = {'t0_b': 100.0, 'per_b': 45.155, 't0_c': 110.0, 'per_c': 85.32,
-        'as_bc': 0.010, 'ac_bc': -0.006, 'r_cb': -2.0, 'per_bc': 650.0}
+TRUE = TRUE_BC
 
 def _make_synth(shift=0.0):
     rng = np.random.default_rng(3)

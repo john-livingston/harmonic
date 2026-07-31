@@ -3,11 +3,11 @@ import pandas as pd
 import pytest
 from harmonic.fisher import rank_transits, _ephem_mask, _gains, _sym_pinv
 from harmonic.model import model, jacobian
+from .conftest import TRUE_BC
 
 # Synthetic Gaussian "posterior": MVN around a TRUE-like point with
 # per-parameter spreads chosen so candidate gains are >> 1 bit.
-BASE = {'t0_b': 100.0, 'per_b': 45.155, 't0_c': 110.0, 'per_c': 85.32,
-        'as_bc': 0.010, 'ac_bc': -0.006, 'r_cb': -2.0, 'per_bc': 650.0}
+BASE = TRUE_BC
 SPREAD = {'t0_b': 1e-3, 'per_b': 5e-4, 't0_c': 1e-3, 'per_c': 5e-4,
           'as_bc': 1e-3, 'ac_bc': 1e-3, 'r_cb': 0.05, 'per_bc': 5.0}
 NAMES = list(BASE)
