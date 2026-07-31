@@ -20,15 +20,6 @@ def test_shared_phase_names(system):
     spec = build_spec(*system, 'bc')
     assert spec.names == ['t0_b', 'per_b', 'as_bc', 'ac_bc', 'r_cb', 'per_bc', 't0_c', 'per_c']
 
-def test_conversion_matches_sine_form(system):
-    p_init, ephem, times = system
-    spec = build_spec(p_init, ephem, times, 'bc')
-    d = spec.to_dict(spec.x0)
-    delta = 2*np.pi*(spec.t_ref - p_init['t_bc'])/p_init['per_bc']
-    np.testing.assert_allclose(d['as_bc'], 0.01*np.cos(delta), rtol=1e-12)
-    np.testing.assert_allclose(d['ac_bc'], 0.01*np.sin(delta), rtol=1e-12)
-    np.testing.assert_allclose(d['r_cb'], -2.0, rtol=1e-12)
-
 def test_x0_within_bounds_and_pttv_logscale(system):
     spec = build_spec(*system, 'bc')
     assert np.all(spec.x0 > spec.lo) and np.all(spec.x0 < spec.hi)
@@ -88,6 +79,7 @@ def test_conversion_with_tref_matches_sine_form(system):
     delta = 2*np.pi*(spec.t_ref - p_init['t_bc'])/p_init['per_bc']
     np.testing.assert_allclose(d['as_bc'], 0.01*np.cos(delta), rtol=1e-12)
     np.testing.assert_allclose(d['ac_bc'], 0.01*np.sin(delta), rtol=1e-12)
+    np.testing.assert_allclose(d['r_cb'], -2.0, rtol=1e-12)
 
 
 def test_derived_frame_shared_phase():
