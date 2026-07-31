@@ -34,11 +34,11 @@ The inner planet's term is $a^{\sin}_{ij}\sin\theta + a^{\cos}_{ij}\cos\theta$ a
 
 The default (shared-phase) mode ties the two planets of a pair to a single TTV phase and takes their sinusoids to be exactly anti-correlated (relative phase 180°, encoded by the sign of $r_{ji}$). This is the leading-order near-resonant behaviour (Lithwick, Xie & Wu 2012); in general, free eccentricity can shift a planet's TTV phase, so the true relative phase of a pair may depart from 180°.
 
-When the shared-phase model cannot represent such a pair, the fit compensates by collapsing the inner planet's amplitude toward zero and inflating $r_{ji}$, so the $r_{ji}$ posterior piles up against its prior bound (harmonic warns when it detects this). In that case re-fit with `--phase-offsets`, which gives each planet its own independent sine/cosine amplitudes.
+When the shared-phase model cannot represent such a pair, the fit compensates by collapsing the inner planet's amplitude toward zero and inflating $r_{ji}$, so the $r_{ji}$ posterior piles up against its prior bound (harmonic warns when it detects this). In that case re-fit with `--phase-offsets`, which gives each planet its own independent sine/cosine amplitudes. The optional `[INIT]` key `phi_ij` (radians, default 0.0) seeds a non-zero initial relative phase for the pair; it is used only with `--phase-offsets`.
 
 ## Priors and fitting
 
-Bounds are auto-scaled from the data per system: $T_0$ within $\pm 0.5$ d of the linear-ephemeris value, $P$ within $\pm 1\%$, amplitudes within $\pm 10\times$ the largest observed $|O\!-\!C|$ of the pair, and the super-period log-uniform between five times the outer planet's orbital period and twenty times the data baseline.
+Bounds are auto-scaled from the data per system: $T_0$ within $\pm 0.5$ d of the linear-ephemeris value, $P$ within $\pm 1\%$, amplitudes within $\pm 10\times$ the larger of the pair's largest observed $|O\!-\!C|$ or the dataset's median transit-timing uncertainty (a floor that keeps near-zero-TTV pairs from getting an unusably tight bound), and the super-period log-uniform between five times the outer planet's orbital period and twenty times the data baseline.
 
 Fitting proceeds in two stages: a bounded `scipy.optimize.least_squares` (TRF) fit with an analytic Jacobian and a phase/sign multi-start finds the optimum, then `emcee` samples the posterior, initialized in a small ball around it. Everything is seeded (`--seed`, default 42) for reproducibility.
 

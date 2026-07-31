@@ -73,9 +73,11 @@ INI format. `[INIT]` gives initial guesses for each planet pair's TTV amplitude,
 
 ```ini
 [INIT]
-a_bc = 0.02          # TTV amplitude (days)
+a_bc = 0.02          # TTV amplitude, planet b contribution (days)
+a_cb = -0.002        # TTV amplitude, planet c contribution (days)
 per_bc = 1000        # TTV super-period (days)
 t_bc = 2455333       # TTV phase reference (BJD)
+# phi_bc = 0.0       # optional initial relative phase (radians), used with --phase-offsets
 
 [OUTER]
 per = 260.354        # non-transiting outer planet period (days)
@@ -85,6 +87,8 @@ t0 = 2455833         # reference time (BJD)
 b = 0.24             # transit durations (days)
 c = 0.12
 ```
+
+Each pair needs both `a_ij` (inner planet) and `a_ji` (outer planet), except the final pair when its outer planet is the non-transiting one (`-n`), which needs only `a_ij`. The optional `phi_ij` (radians, default 0.0) seeds the pair's initial relative phase, used only with `--phase-offsets`.
 
 The `[INIT]` keys are converted internally to the sampled `(as, ac, r)` parametrization (see [The TTV model](model.md)); the file format is unchanged from earlier versions.
 
@@ -96,6 +100,8 @@ Written to the `-o` directory:
 - `fit_config.json` — fit-defining options (recovered automatically by `--predict`)
 - `fit_stats.json` — system-wide ΔBIC (harmonic vs. linear ephemeris) + MCMC diagnostics
 - `args.txt` — the exact command used
+- `data.csv`, `config.ini` — copies of the input CSV and configuration file
+- `harmonic_<timestamp>.log` — full log of the run
 - `fit.png`, `init.png` — posterior TTV curves and the initial best fit
 - `corner.png`, `trace.png` — posterior corner and trace plots
 - `predict-<window>.png` — transit-prediction plots

@@ -130,9 +130,11 @@ Configuration uses INI format:
 ```ini
 [INIT]
 # Initial parameter guesses
-a_bc = 0.02          # TTV amplitude (days)
+a_bc = 0.02          # TTV amplitude, planet b contribution (days)
+a_cb = -0.002        # TTV amplitude, planet c contribution (days)
 per_bc = 1000        # TTV period (days)  
 t_bc = 2455333       # TTV phase reference (BJD)
+# phi_bc = 0.0       # optional initial relative phase (radians), used with --phase-offsets
 
 [OUTER]
 # Non-transiting outer planet (optional)
@@ -145,6 +147,8 @@ b = 0.24            # Planet b duration (days)
 c = 0.12            # Planet c duration (days)
 ```
 
+Each pair needs both `a_ij` (inner planet's contribution) and `a_ji` (outer planet's contribution), except the final pair when its outer planet is the non-transiting one (`-n`), which needs only `a_ij`. The optional `phi_ij` (radians, default 0.0) seeds the pair's initial relative phase; it is used only with `--phase-offsets`.
+
 `[T14]` keys must be bare planet letters, one per transiting planet, matching the letters in use (see `-l`); names or prefixed forms such as `planet_b` are rejected with an error naming the key.
 
 ## Output Files
@@ -155,6 +159,9 @@ The package generates several output files in the specified directory:
 - `fit_config.json`: fit-defining options (recovered automatically by `--predict`)
 - `fit_stats.json`: system-wide ΔBIC (harmonic vs. linear ephemeris) plus MCMC diagnostics
 - `args.txt`: the exact command used for the fit
+- `data.csv`: copy of the input transit-times CSV
+- `config.ini`: copy of the input configuration file
+- `harmonic_<timestamp>.log`: full log of the run
 - `corner.png`: Corner plot of posterior distributions
 - `trace.png`: MCMC trace plots
 - `fit.png`: Best-fit model comparison with data
@@ -198,7 +205,7 @@ When the shared-phase model cannot represent such a pair, the fit compensates by
 # Analyze the provided Kepler-51 system
 from harmonic import Harmonic
 
-h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', 'kep51_results/')
+h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir='kep51_results/')
 h.fit()
 h.plot_samples()
 h.print_constraints()
@@ -242,16 +249,16 @@ Key options:
 - `--steps`: Number of MCMC steps (default: 2000)
 - `-b, --burn`: Burn-in steps (default: 1000)
 - `--seed`: Random seed (default: 42)
-- `--predict`: Predict transits in time window
+- `-p, --predict`: Predict transits in time window
 - `--predict-list`: Output CSV file with predicted transit times
 - `--phase-offsets`: Allow different phase offsets for each planet pair
 - `--t-offset`: Timing offset to add to get BJD (e.g. 2454833 for BKJD data)
 - `--sigma`: Assumed timing precision (days) for the information-gain ranking
 - `--rank-by`: Greedy observing-order criterion (`total` or `ttv`)
-
-For a prediction run, the fit-defining options (`-l`, `--phase-offsets`, `--non-transiting-outer`, `--t-offset`) are read back from `fit_config.json` in the output directory, so `harmonic -o <dir> --predict ...` is all you need; any conflicting flag you pass is ignored with a warning.
 - `-n, --non-transiting-outer`: Include non-transiting outer planet
 - `--clobber`: Overwrite existing results
+
+For a prediction run, the fit-defining options (`-l`, `--phase-offsets`, `--non-transiting-outer`, `--t-offset`) are read back from `fit_config.json` in the output directory, so `harmonic -o <dir> --predict ...` is all you need; any conflicting flag you pass is ignored with a warning.
 
 ## Development
 
@@ -289,7 +296,7 @@ Contributions are welcome! Please:
 
 ## License
 
-This project is licensed under the WTFPL v3 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the WTFPL, Version 2 - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 

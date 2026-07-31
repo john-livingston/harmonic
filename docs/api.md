@@ -47,3 +47,11 @@ The high-level entry point is the `Harmonic` class; the functions below are the 
 ::: harmonic.predict.plot_prediction
 
 ::: harmonic.setup_logging
+
+::: harmonic.HarmonicError
+
+::: harmonic.ConfigurationError
+
+::: harmonic.DataError
+
+::: harmonic.PredictionError
