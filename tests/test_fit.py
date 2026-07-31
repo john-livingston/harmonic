@@ -1,9 +1,12 @@
+import os
 import numpy as np
 import pandas as pd
 import pytest
 from harmonic.model import model
 from harmonic.params import build_spec
 from harmonic.fit import run_fit, optimize
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 TRUE = {'t0_b': 100.0, 'per_b': 45.155, 't0_c': 110.0, 'per_c': 85.32,
         'as_bc': 0.010, 'ac_bc': -0.006, 'r_cb': -2.0, 'per_bc': 650.0}
@@ -197,7 +200,8 @@ def test_optimize_escapes_bad_phase_basin_kep51(tmp_path):
     # degenerate (as->0, r->R_MAX) valley of the cd pair (reduced chisq 4.32,
     # r_dc railed at +20); phase/sign multi-start must reach the true optimum
     from harmonic.harmonic import Harmonic
-    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    h = Harmonic(os.path.join(REPO, 'examples/kep51.csv'),
+                os.path.join(REPO, 'examples/kep51.ini'), outdir=str(tmp_path))
     t = h.times
     res = optimize(h.spec, np.array(t.planet), np.array(t.epoch), np.array(t.tc),
                    np.array(t.tc_unc), h.planet_letters, False, False)

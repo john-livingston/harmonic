@@ -246,7 +246,8 @@ def test_delta_bic_recompute_when_no_stats(tmp_path):
     # A one-row chain with the right columns satisfies _require_chain; the
     # recompute path ignores the chain contents.
     from harmonic.harmonic import Harmonic
-    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    h = Harmonic(os.path.join(REPO, 'examples/kep51.csv'),
+                os.path.join(REPO, 'examples/kep51.ini'), outdir=str(tmp_path))
     h.flatchain = pd.DataFrame({n: [0.0] for n in h.spec.names})
     h._chain_mismatch = None
     h._fit_stats = None
@@ -259,7 +260,8 @@ def test_delta_bic_recompute_when_no_stats(tmp_path):
 
 def test_delta_bic_uses_stored_stats(tmp_path):
     from harmonic.harmonic import Harmonic
-    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    h = Harmonic(os.path.join(REPO, 'examples/kep51.csv'),
+                os.path.join(REPO, 'examples/kep51.ini'), outdir=str(tmp_path))
     h.flatchain = pd.DataFrame({n: [0.0] for n in h.spec.names})
     h._chain_mismatch = None
     h._fit_stats = {'delta_bic': 99.0, 'evidence': 'very strong', 'chi2_lin': 1.0,
@@ -272,7 +274,8 @@ def _predict_harmonic(tmp_path, sigma=None, rank_by='total', output_list=None):
     # real kep51 inputs + a synthetic-but-valid chain (predict never re-fits)
     import numpy as np
     from harmonic.harmonic import Harmonic
-    h = Harmonic('examples/kep51.csv', 'examples/kep51.ini', outdir=str(tmp_path))
+    h = Harmonic(os.path.join(REPO, 'examples/kep51.csv'),
+                os.path.join(REPO, 'examples/kep51.ini'), outdir=str(tmp_path))
     rng = np.random.default_rng(0)
     x0 = h.spec.x0 + h.spec.offset
     width = 1e-4 * (h.spec.hi - h.spec.lo)
@@ -294,7 +297,7 @@ def test_predict_returns_ranked_dataframe(tmp_path):
     assert (df.gain_total >= df.gain_ttv - 1e-12).all() and (df.gain_ttv >= 0).all()
     # default sigma: per-planet median tc_unc from the fitted data
     import pandas as _pd
-    times = _pd.read_csv('examples/kep51.csv', comment='#')
+    times = _pd.read_csv(os.path.join(REPO, 'examples/kep51.csv'), comment='#')
     letters = {0: 'b', 1: 'c', 2: 'd'}
     for pl, g in df.groupby('planet'):
         pid = [k for k, v in letters.items() if v == pl][0]
