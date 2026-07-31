@@ -667,18 +667,21 @@
 <p>INI format. <code>[INIT]</code> gives initial guesses for each planet pair's TTV amplitude, super-period, and phase reference; <code>[OUTER]</code> gives the ephemeris of a non-transiting outer planet (used with <code>-n</code>); <code>[T14]</code> gives transit durations (days) used only for prediction.</p>
 <p><code>[T14]</code> keys must be bare planet letters (<code>b = 0.24</code>), one per transiting planet, matching the letters in use (see <code>-l</code>). Names or prefixed forms such as <code>planet_b</code> are rejected with an error naming the key. Durations for planets outside a given fit are ignored, so one config can serve fits over different subsets of the system.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">[INIT]</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="na">a_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.02</span><span class="w">          </span><span class="c1"># TTV amplitude (days)</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="na">per_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">1000</span><span class="w">        </span><span class="c1"># TTV super-period (days)</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="na">t_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">2455333</span><span class="w">       </span><span class="c1"># TTV phase reference (BJD)</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">[OUTER]</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="na">per</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">260.354</span><span class="w">        </span><span class="c1"># non-transiting outer planet period (days)</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="na">t0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">2455833</span><span class="w">         </span><span class="c1"># reference time (BJD)</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">[T14]</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="na">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.24</span><span class="w">             </span><span class="c1"># transit durations (days)</span>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="na">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.12</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="na">a_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.02</span><span class="w">          </span><span class="c1"># TTV amplitude, planet b contribution (days)</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="na">a_cb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">-0.002</span><span class="w">        </span><span class="c1"># TTV amplitude, planet c contribution (days)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="na">per_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">1000</span><span class="w">        </span><span class="c1"># TTV super-period (days)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="na">t_bc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">2455333</span><span class="w">       </span><span class="c1"># TTV phase reference (BJD)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># phi_bc = 0.0       # optional initial relative phase (radians), used with --phase-offsets</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">[OUTER]</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="na">per</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">260.354</span><span class="w">        </span><span class="c1"># non-transiting outer planet period (days)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="na">t0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">2455833</span><span class="w">         </span><span class="c1"># reference time (BJD)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="k">[T14]</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="na">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.24</span><span class="w">             </span><span class="c1"># transit durations (days)</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="na">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.12</span>
 </code></pre></div>
+<p>Each pair needs both <code>a_ij</code> (inner planet) and <code>a_ji</code> (outer planet), except the final pair when its outer planet is the non-transiting one (<code>-n</code>), which needs only <code>a_ij</code>. The optional <code>phi_ij</code> (radians, default 0.0) seeds the pair's initial relative phase, used only with <code>--phase-offsets</code>.</p>
 <p>The <code>[INIT]</code> keys are converted internally to the sampled <code>(as, ac, r)</code> parametrization (see <a href="../model/">The TTV model</a>); the file format is unchanged from earlier versions.</p>
 <h2 id="output-files">Output files<a class="headerlink" href="#output-files" title="Permanent link">&para;</a></h2>
 <p>Written to the <code>-o</code> directory:</p>
@@ -687,6 +690,8 @@
 <li><code>fit_config.json</code> — fit-defining options (recovered automatically by <code>--predict</code>)</li>
 <li><code>fit_stats.json</code> — system-wide ΔBIC (harmonic vs. linear ephemeris) + MCMC diagnostics</li>
 <li><code>args.txt</code> — the exact command used</li>
+<li><code>data.csv</code>, <code>config.ini</code> — copies of the input CSV and configuration file</li>
+<li><code>harmonic_&lt;timestamp&gt;.log</code> — full log of the run</li>
 <li><code>fit.png</code>, <code>init.png</code> — posterior TTV curves and the initial best fit</li>
 <li><code>corner.png</code>, <code>trace.png</code> — posterior corner and trace plots</li>
 <li><code>predict-&lt;window&gt;.png</code> — transit-prediction plots</li>
