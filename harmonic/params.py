@@ -58,6 +58,16 @@ def _pairs(planet_letters):
     return list(zip(planet_letters[:-1], planet_letters[1:]))
 
 
+def _init_value(p_init, key, pair):
+    """[INIT] lookup that names the missing key instead of raising a bare KeyError."""
+    if key not in p_init:
+        raise ConfigurationError(
+            f"[INIT] has no {key} for planet pair {pair}; expected a_{pair}, "
+            f"per_{pair} and t_{pair} (plus a_{pair[::-1]} when the outer planet "
+            f"transits), one set per adjacent pair")
+    return float(p_init[key])
+
+
 def build_spec(p_init, ephem, times, planet_letters,
                non_transiting_outer=False, phase_offsets=False):
     spec = ParamSpec()
@@ -80,11 +90,11 @@ def build_spec(p_init, ephem, times, planet_letters,
         pair = f'{p_i}{p_j}'
         if p_i == planet_letters[0]:
             add_planet(p_i)
-        a_in = float(p_init[f'a_{pair}'])
+        a_in = _init_value(p_init, f'a_{pair}', pair)
         if a_in == 0.0:
             raise ConfigurationError(f'a_{pair} must be nonzero in [INIT]')
-        per_ttv = float(p_init[f'per_{pair}'])
-        t_ttv = float(p_init[f't_{pair}'])
+        per_ttv = _init_value(p_init, f'per_{pair}', pair)
+        t_ttv = _init_value(p_init, f't_{pair}', pair)
         phi = float(p_init.get(f'phi_{pair}', 0.0))
         delta = 2 * np.pi * (spec.t_ref - t_ttv) / per_ttv
         outer_transits = p_j in transiting
@@ -94,7 +104,7 @@ def build_spec(p_init, ephem, times, planet_letters,
         spec.add(f'as_{pair}', a_in * np.cos(d_in), -amp, amp, rf'$A^{{\sin}}_{{{pair}}}$')
         spec.add(f'ac_{pair}', a_in * np.sin(d_in), -amp, amp, rf'$A^{{\cos}}_{{{pair}}}$')
         if outer_transits:
-            a_out = float(p_init[f'a_{p_j}{p_i}'])
+            a_out = _init_value(p_init, f'a_{p_j}{p_i}', pair)
             if phase_offsets:
                 d_out = delta - phi
                 spec.add(f'as_{p_j}{p_i}', a_out * np.cos(d_out), -amp, amp, rf'$A^{{\sin}}_{{{p_j}{p_i}}}$')

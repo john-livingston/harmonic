@@ -54,6 +54,25 @@ def test_zero_inner_amplitude_raises(system):
         build_spec(p_init, ephem, times, 'bc')
 
 
+@pytest.mark.parametrize('key', ['a_bc', 'per_bc', 't_bc', 'a_cb'])
+def test_missing_init_key_raises(system, key):
+    from harmonic.exceptions import ConfigurationError
+    p_init, ephem, times = system
+    p_init = {k: v for k, v in p_init.items() if k != key}
+    with pytest.raises(ConfigurationError, match=key) as e:
+        build_spec(p_init, ephem, times, 'bc')
+    assert 'pair bc' in str(e.value)
+
+
+def test_missing_outer_amplitude_ignored_when_outer_does_not_transit(system):
+    # a_cb is only needed when the outer planet of the pair transits
+    p_init, ephem, times = system
+    p_init = {k: v for k, v in p_init.items() if k != 'a_cb'}
+    spec = build_spec(p_init, ephem, times[times.planet == 'b'], 'bc',
+                      non_transiting_outer=True)
+    assert spec.names == ['t0_b', 'per_b', 'as_bc', 'ac_bc', 'per_bc']
+
+
 def test_spec_tref_is_rounded_data_median(system):
     p_init, ephem, times = system
     spec = build_spec(p_init, ephem, times, 'bc')
