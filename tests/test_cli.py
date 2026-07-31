@@ -110,6 +110,59 @@ def test_outer_section_missing_key_error(tmp_path, sample_data_file):
     assert 'OUTER' in str(e.value)
 
 
+def test_config_file_not_found_raises_configuration_error(tmp_path):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import ConfigurationError
+    with pytest.raises(ConfigurationError, match='could not read config file') as e:
+        Harmonic(fp_config=str(tmp_path / 'missing.ini'), outdir=str(tmp_path))
+    assert 'missing.ini' in str(e.value)
+
+
+def test_corrupted_config_file_raises_configuration_error(tmp_path, corrupted_config_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import ConfigurationError
+    with pytest.raises(ConfigurationError, match='error parsing config file') as e:
+        Harmonic(fp_config=str(corrupted_config_file), outdir=str(tmp_path))
+    assert 'corrupted_config.ini' in str(e.value)
+
+
+def test_data_file_not_found_raises_data_error(tmp_path, sample_config_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import DataError
+    with pytest.raises(DataError, match='data file not found') as e:
+        Harmonic(fp_data=str(tmp_path / 'missing.csv'), fp_config=str(sample_config_file),
+                 outdir=str(tmp_path))
+    assert 'missing.csv' in str(e.value)
+
+
+def test_empty_data_file_raises_data_error(tmp_path, sample_config_file, empty_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import DataError
+    with pytest.raises(DataError, match='data file is empty or has no columns'):
+        Harmonic(fp_data=str(empty_file), fp_config=str(sample_config_file), outdir=str(tmp_path))
+
+
+def test_invalid_data_file_missing_columns_raises(tmp_path, sample_config_file, invalid_data_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import DataError
+    with pytest.raises(DataError, match='data file missing required columns') as e:
+        Harmonic(fp_data=str(invalid_data_file), fp_config=str(sample_config_file),
+                 outdir=str(tmp_path))
+    msg = str(e.value)
+    assert all(col in msg for col in ('planet', 'epoch', 'tc', 'tc_unc'))
+
+
+def test_non_positive_tc_unc_raises_data_error(tmp_path, sample_config_file):
+    from harmonic.harmonic import Harmonic
+    from harmonic.exceptions import DataError
+    df = pd.DataFrame(dict(planet=[0, 0, 1, 1], epoch=[0, 1, 0, 1],
+                           tc=[100., 145., 110., 195.], tc_unc=[0.01, -0.01, 0.01, 0.01]))
+    df.to_csv(tmp_path / 'd.csv', index=False)
+    with pytest.raises(DataError, match='tc_unc must be positive'):
+        Harmonic(fp_data=str(tmp_path / 'd.csv'), fp_config=str(sample_config_file),
+                 outdir=str(tmp_path))
+
+
 def test_fit_config_round_trip(tmp_path):
     from harmonic.harmonic import _build_parser, _write_fit_config, _read_fit_config
     args = _build_parser().parse_args(
