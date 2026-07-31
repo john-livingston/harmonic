@@ -323,6 +323,46 @@ def test_fit_inputs_not_written_when_fit_is_skipped(tmp_path):
     assert (tmp_path / 'data.csv').read_text() == original
 
 
+def test_predict_cli_end_to_end_uses_fit_config_and_full_chain(tmp_path):
+    # cli() --predict must (1) construct Harmonic with the non_transiting_outer/
+    # phase_offsets recorded in fit_config.json rather than swapping or
+    # defaulting them, and (2) reload the FULL on-disk chain rather than a
+    # truncated subset. Neither is exercised elsewhere: every other test that
+    # needs a chain assigns h.flatchain in memory (never touching the on-disk
+    # reload), and no other cli(--predict) test asserts on the predict output.
+    import sys as _sys
+    from unittest.mock import patch
+    from harmonic.harmonic import cli, Harmonic
+    opts = _seed_predict_dir(tmp_path)
+    assert opts['non_transiting_outer'] is False and opts['phase_offsets'] is True
+    n_rows = len(pd.read_csv(tmp_path / 'samples.csv.gz'))
+
+    out_csv = tmp_path / 'transits.csv'
+    argv = ['harmonic', '-o', str(tmp_path),
+            '--predict', '2017-05-01 00:00', '2017-07-30 00:00',
+            '--predict-list', str(out_csv)]
+    with patch.object(_sys, 'argv', argv):
+        cli()
+
+    # predict actually ran end to end: this only happens if Harmonic was
+    # rebuilt with the fit's own letters/non_transiting_outer/phase_offsets
+    # (a swap between the latter two leaves 'bcd' one letter short of the
+    # non_transiting_outer=True planet count and Harmonic() raises instead)
+    pngs = list(tmp_path.glob('predict-*.png'))
+    assert len(pngs) == 1 and pngs[0].stat().st_size > 0
+    got = pd.read_csv(out_csv)
+    assert len(got) > 0
+    for c in ('sigma', 'gain_total', 'gain_ttv', 'greedy_rank', 'greedy_gain'):
+        assert c in got.columns
+
+    # kills the reload-truncation mutation: a predict run never rewrites
+    # samples.csv.gz, so re-reading it through _setup must still see every row
+    h = Harmonic(letters=opts['letters'], outdir=str(tmp_path),
+                non_transiting_outer=opts['non_transiting_outer'],
+                phase_offsets=opts['phase_offsets'])
+    assert len(h.flatchain) == n_rows
+
+
 def test_fit_skip_warns(tmp_path, caplog):
     import logging
     from harmonic.harmonic import Harmonic
