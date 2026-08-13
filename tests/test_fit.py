@@ -5,7 +5,7 @@ import pytest
 from harmonic.model import model
 from harmonic.params import build_spec
 from harmonic.fit import run_fit, optimize
-from .conftest import TRUE_BC
+from .data import TRUE_BC
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
