@@ -249,6 +249,9 @@ Key options:
 - `--steps`: Number of MCMC steps (default: 2000)
 - `-b, --burn`: Burn-in steps (default: 1000)
 - `--seed`: Random seed (default: 42)
+- `-m, --mstar`: Host star mass in Msun, for the Lithwick mass constraints (default: 1.0)
+- `--mu-min-me`, `--mu-max-me`: Bounds of the log-uniform Lithwick mass-ratio prior, in Mearth per Msun of host (defaults: 1, 30)
+- `--z-max`: Upper bound of the uniform Lithwick free-eccentricity prior |Zfree| (default: 0.1)
 - `-p, --predict`: Predict transits in time window
 - `--predict-list`: Output CSV file with predicted transit times
 - `--phase-offsets`: Allow different phase offsets for each planet pair
