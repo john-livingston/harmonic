@@ -461,3 +461,28 @@ def test_cli_ranking_flags_defaults():
     args = _build_parser().parse_args(
         ['-o', 'x', '--predict', 'a', 'b', '--sigma', '0.002', '--rank-by', 'ttv'])
     assert args.sigma == 0.002 and args.rank_by == 'ttv'
+
+
+def test_lithwick_prior_flags_default_to_print_constraints_defaults():
+    import inspect
+    from harmonic.harmonic import _build_parser
+    from harmonic.lithwick import print_constraints
+    defaults = inspect.signature(print_constraints).parameters
+    args = _build_parser().parse_args(['-o', 'x'])
+    for name in ('mu_min_me', 'mu_max_me', 'z_max'):
+        assert getattr(args, name) == defaults[name].default
+    args = _build_parser().parse_args(
+        ['-o', 'x', '--mu-min-me', '0.5', '--mu-max-me', '300', '--z-max', '0.3'])
+    assert (args.mu_min_me, args.mu_max_me, args.z_max) == (0.5, 300.0, 0.3)
+
+
+def test_print_constraints_forwards_lithwick_priors(monkeypatch):
+    import harmonic.harmonic as hh
+    seen = {}
+    monkeypatch.setattr(hh, 'print_constraints', lambda *a, **kw: seen.update(kw))
+    h = hh.Harmonic.__new__(hh.Harmonic)
+    h.flatchain, h._chain_mismatch, h.outdir = pd.DataFrame({'x': [0.0]}), None, 'x'
+    h.planet_letters, h.non_transiting_outer, h.phase_offsets, h.ephem = 'bc', False, False, None
+    h.print_constraints(mstar=0.8, seed=7, mu_min_me=0.5, mu_max_me=300.0, z_max=0.3)
+    assert seen['mu_min_me'] == 0.5 and seen['mu_max_me'] == 300.0 and seen['z_max'] == 0.3
+    assert seen['mstar'] == 0.8 and seen['seed'] == 7

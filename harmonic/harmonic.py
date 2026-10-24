@@ -331,7 +331,8 @@ class Harmonic:
             t_ref=self.spec.t_ref
             )
 
-    def print_constraints(self, mstar=1.0, seed=42):
+    def print_constraints(self, mstar=1.0, seed=42,
+                          mu_min_me=1.0, mu_max_me=30.0, z_max=0.1):
         """
         Print Lithwick constraints from MCMC samples.
 
@@ -341,6 +342,12 @@ class Harmonic:
             Mass of host star in solar masses (default: 1.0)
         seed : int, optional
             Random seed for ABC sampling (default: 42)
+        mu_min_me : float, optional
+            Lower bound of mass-ratio prior in Mearth (default: 1.0)
+        mu_max_me : float, optional
+            Upper bound of mass-ratio prior in Mearth (default: 30.0)
+        z_max : float, optional
+            Upper bound of free-eccentricity prior (default: 0.1)
         """
         self._require_chain()
         return print_constraints(
@@ -350,7 +357,10 @@ class Harmonic:
             mstar=mstar,
             phase_offsets=self.phase_offsets,
             ephem=self.ephem,
-            seed=seed)
+            seed=seed,
+            mu_min_me=mu_min_me,
+            mu_max_me=mu_max_me,
+            z_max=z_max)
 
     def delta_bic(self):
         """Whole-system ΔBIC of the best-fit harmonic model vs. a linear
@@ -513,6 +523,9 @@ def _build_parser():
     parser.add_argument('--phase-offsets', help='Allow different phase offsets for sinusoids in each planet pair', action="store_true")
     parser.add_argument('-t', '--tmax', help='Maximum time for plotting samples', type=float, default=None)
     parser.add_argument('-m', '--mstar', help='Mass of host star (Msun)', type=float, default=1.0)
+    parser.add_argument('--mu-min-me', help='Lower bound of the Lithwick mass-ratio prior (Mearth per Msun of host)', type=float, default=1.0)
+    parser.add_argument('--mu-max-me', help='Upper bound of the Lithwick mass-ratio prior (Mearth per Msun of host)', type=float, default=30.0)
+    parser.add_argument('--z-max', help='Upper bound of the Lithwick free-eccentricity prior |Zfree|', type=float, default=0.1)
     parser.add_argument('-p', '--predict',
         help='Predict transit(s) within window (2 ISO timestamps, e.g. "2023-09-17 16:00" "2023-09-17 21:30")',
         type=str, nargs=2, default=None
@@ -694,7 +707,10 @@ def cli():
             harmonic = Harmonic(fp_data, fp_config, letters, outdir, non_transiting_outer, phase_offsets)
             harmonic.fit(walkers, burn, steps, thin, nproc, clobber, seed=args.seed)
             harmonic.plot_samples(tmax)
-            harmonic.print_constraints(mstar, seed=args.seed)
+            harmonic.print_constraints(mstar, seed=args.seed,
+                                       mu_min_me=args.mu_min_me,
+                                       mu_max_me=args.mu_max_me,
+                                       z_max=args.z_max)
             harmonic.delta_bic()
             logger.info("TTV fitting completed successfully")
 
